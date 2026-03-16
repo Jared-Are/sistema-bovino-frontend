@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import {
   Home,
   Beef,
@@ -10,120 +10,367 @@ import {
   Users,
   Settings,
   LogOut,
-  ChevronDown,
-  Bell,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  MapPin,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-const menuItems = [
-  { id: 'inicio', label: 'Inicio', icon: Home, href: '/', active: false },
-  { id: 'inventario', label: 'Inventario', icon: Beef, href: '/inventario', active: true },
-  { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion', active: false },
-  { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud', active: false },
-  { id: 'produccion', label: 'Producción', icon: TrendingUp, href: '/produccion', active: false },
-  { id: 'personal', label: 'Personal', icon: Users, href: '/personal', active: false },
-  { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion', active: false },
-];
+type UserRole = 'propietario' | 'veterinario' | 'operario';
 
-export function Sidebar() {
-  const [selectedRole, setSelectedRole] = useState('Propietario');
-  const notificationCount = 3;
+interface SidebarContextType {
+  isExpanded: boolean;
+  toggleSidebar: () => void;
+}
+
+const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+
+export const useSidebar = () => {
+  const context = useContext(SidebarContext);
+  if (!context) {
+    throw new Error('useSidebar must be used within a SidebarProvider');
+  }
+  return context;
+};
+
+const menuConfig: Record<UserRole, Array<{ id: string; label: string; icon: any; href: string }>> = {
+  propietario: [
+    { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/dashboard' },
+    { id: 'animales', label: 'Animales', icon: Beef, href: '/animales' },
+    { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
+    { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
+    { id: 'produccion', label: 'Producción', icon: TrendingUp, href: '/produccion' },
+    { id: 'usuarios', label: 'Usuarios', icon: Users, href: '/usuarios' },
+    { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion' },
+  ],
+  veterinario: [
+    { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/' },
+    { id: 'animales', label: 'Animales', icon: Beef, href: '/animales' },
+    { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
+    { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
+    { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion' },
+  ],
+  operario: [
+    { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/' },
+    { id: 'animales', label: 'Animales', icon: Beef, href: '/animales' },
+    { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
+    { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
+    { id: 'produccion', label: 'Producción', icon: TrendingUp, href: '/produccion' },
+    { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion' },
+  ],
+};
+
+const roleNames: Record<UserRole, string> = {
+  propietario: 'Propietario',
+  veterinario: 'Veterinario',
+  operario: 'Operario',
+};
+
+function MobileSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogout, menuItems }: any) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-zinc-200 flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-zinc-200">
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden fixed top-3 left-3 z-50 h-10 w-10 bg-white/80 backdrop-blur-sm border shadow-sm"
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Abrir menú</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-64 p-0 bg-white">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Menú de navegación</SheetTitle>
+          <SheetDescription>Navega por las secciones de la aplicación</SheetDescription>
+        </SheetHeader>
+        <SidebarContent 
+          isExpanded={true} 
+          userRole={userRole} 
+          userName={userName} 
+          fincaNombre={fincaNombre}
+          fincaUbicacion={fincaUbicacion}
+          onLogout={onLogout}
+          menuItems={menuItems}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SidebarContent({ 
+  isExpanded, 
+  userRole, 
+  userName, 
+  fincaNombre,
+  fincaUbicacion,
+  onLogout, 
+  menuItems, 
+  onToggle, 
+  showToggle = false 
+}: any) {
+  const pathname = usePathname();
+  const rolValido = userRole as UserRole;
+
+  return (
+    <div className="flex h-full flex-col bg-white relative">
+      <div className="flex flex-col border-b border-zinc-200 px-3 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <Beef className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm shrink-0">
+              <Beef className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-zinc-900">Gestión</h1>
-              <p className="text-xs text-zinc-500">Bovina</p>
+            <div className={cn(
+              "whitespace-nowrap transition-all duration-200 overflow-hidden",
+              isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0"
+            )}>
+              <p className="font-semibold text-zinc-900 leading-tight">
+                {fincaNombre || 'Mi Finca'}
+              </p>
+              <div className="flex items-center gap-1 text-xs text-zinc-500">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{fincaUbicacion || 'Ubicación no especificada'}</span>
+              </div>
             </div>
-          </div>
-          <div className="relative">
-            <Button variant="ghost" size="sm" className="p-2 hover:bg-zinc-100">
-              <Bell className="w-5 h-5 text-zinc-600" />
-              {notificationCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
-                  {notificationCount}
-                </Badge>
-              )}
-            </Button>
           </div>
         </div>
       </div>
 
-      {/* Role Selector */}
-      <div className="px-4 py-4 border-b border-zinc-200">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-full justify-between text-sm h-9"
-            >
-              <span className="text-xs font-medium text-zinc-700">{selectedRole}</span>
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <DropdownMenuItem onClick={() => setSelectedRole('Propietario')}>
-              Propietario
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSelectedRole('Veterinario')}>
-              Veterinario
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSelectedRole('Operario')}>
-              Operario
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Menu Items */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {menuItems.map((item) => {
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+        {menuItems.map((item: any) => {
           const Icon = item.icon;
-          const isActive = item.active;
+          const isActive = pathname === item.href;
+          
           return (
             <Link
               key={item.id}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "hover:bg-emerald-50 hover:text-emerald-700",
                 isActive
-                  ? 'bg-emerald-50 text-emerald-700 font-medium border border-emerald-200'
-                  : 'text-zinc-700 hover:bg-zinc-50'
+                  ? "bg-emerald-50 text-emerald-700 font-medium border border-emerald-200"
+                  : "text-zinc-700"
               )}
             >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
+              <Icon className="h-5 w-5 shrink-0" />
+              <span
+                className={cn(
+                  "whitespace-nowrap transition-all duration-200",
+                  isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+                )}
+              >
+                {item.label}
+              </span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t border-zinc-200">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-zinc-700 hover:bg-red-50 hover:text-red-700"
-        >
-          <LogOut className="w-5 h-5" />
-          <span>Cerrar Sesión</span>
-        </Button>
+      <div className="border-t border-zinc-200">
+        <div className="px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+              <span className="text-sm font-semibold text-emerald-700">
+                {userName?.charAt(0).toUpperCase() || 'U'}
+              </span>
+            </div>
+            <div className={cn(
+              "whitespace-nowrap transition-all duration-200 overflow-hidden",
+              isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0"
+            )}>
+              <p className="text-sm font-medium text-zinc-900">{userName || 'Usuario'}</p>
+              <p className="text-xs text-zinc-500">{roleNames[rolValido] || userRole}</p>
+            </div>
+          </div>
+        </div>
+        {/* Logout Button */}
+        <div className="p-2">
+          <button
+            onClick={onLogout}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              "hover:bg-red-50 text-red-600 hover:text-red-700"
+            )}
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            <span
+              className={cn(
+                "whitespace-nowrap transition-all duration-200",
+                isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+              )}
+            >
+              Cerrar sesión
+            </span>
+          </button>
+        </div>
       </div>
+
+      {showToggle && onToggle && (
+        <Button
+          onClick={onToggle}
+          variant="ghost"
+          size="icon"
+          className="absolute -right-3 top-20 z-50 h-6 w-6 rounded-full bg-white border border-zinc-200 shadow-sm hover:bg-zinc-100"
+        >
+          {isExpanded ? (
+            <ChevronLeft className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogout, menuItems, isExpanded, onToggle }: any) {
+  return (
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen bg-white border-r border-zinc-200",
+        "transition-all duration-300 ease-in-out",
+        "hidden md:block",
+        isExpanded ? "w-64" : "w-16"
+      )}
+    >
+      <SidebarContent 
+        isExpanded={isExpanded} 
+        userRole={userRole} 
+        userName={userName} 
+        fincaNombre={fincaNombre}
+        fincaUbicacion={fincaUbicacion}
+        onLogout={onLogout}
+        menuItems={menuItems}
+        onToggle={onToggle}
+        showToggle={true}
+      />
     </aside>
+  );
+}
+
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole>('propietario');
+  const [userName, setUserName] = useState('');
+  const [fincaNombre, setFincaNombre] = useState('');
+  const [fincaUbicacion, setFincaUbicacion] = useState('');
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const pathname = usePathname(); 
+  const isLoginPage = pathname === '/'; //Detectar si estamos en login
+
+  const toggleSidebar = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const cargarDatosUsuario = () => {
+    const token = localStorage.getItem('token');
+    const usuarioStr = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('userRole') as UserRole | null;
+    
+    // Si no hay token, limpiar todos los estados
+    if (!token) {
+      setUserRole('propietario');
+      setUserName('');
+      setFincaNombre('');
+      setFincaUbicacion('');
+      return;
+    }
+
+    if (rol) {
+      setUserRole(rol);
+    }
+
+    if (usuarioStr) {
+      try {
+        const usuario = JSON.parse(usuarioStr);
+        setUserName(usuario.nombre || 'Usuario');
+        
+        if (usuario.finca) {
+          setFincaNombre(usuario.finca.nombre || '');
+          setFincaUbicacion(usuario.finca.ubicacion || '');
+        }
+      } catch (e) {
+        console.error('Error parsing usuario:', e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    cargarDatosUsuario();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token' && !e.newValue) {
+        setUserRole('propietario');
+        setUserName('');
+        setFincaNombre('');
+        setFincaUbicacion('');
+        return;
+      }
+      
+      if (e.key === 'usuario' || e.key === 'userRole') {
+        cargarDatosUsuario();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    const handleLogin = () => cargarDatosUsuario();
+    window.addEventListener('login', handleLogin);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('login', handleLogin);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    localStorage.removeItem('userRole');
+    
+    setUserRole('propietario');
+    setUserName('');
+    setFincaNombre('');
+    setFincaUbicacion('');
+    
+    router.push('/');
+  };
+
+  const menuItems = menuConfig[userRole];
+
+  return (
+    <SidebarContext.Provider value={{ isExpanded, toggleSidebar }}>
+      {!isLoginPage && (isMobile ? (
+        <MobileSidebar 
+          userRole={userRole} 
+          userName={userName} 
+          fincaNombre={fincaNombre}
+          fincaUbicacion={fincaUbicacion}
+          onLogout={handleLogout}
+          menuItems={menuItems}
+        />
+      ) : (
+        <DesktopSidebar 
+          userRole={userRole} 
+          userName={userName} 
+          fincaNombre={fincaNombre}
+          fincaUbicacion={fincaUbicacion}
+          onLogout={handleLogout}
+          menuItems={menuItems}
+          isExpanded={isExpanded}
+          onToggle={toggleSidebar}
+        />
+      ))}
+      {children}
+    </SidebarContext.Provider>
   );
 }

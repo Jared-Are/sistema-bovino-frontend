@@ -1,0 +1,119 @@
+'use client';
+
+import { Badge } from '@/components/ui/badge';
+import { Weight, MapPin, ImageOff } from 'lucide-react';
+import type { Animal } from '@/lib/types/animal';
+import { useState } from 'react';
+
+interface AnimalCardsProps {
+  animals: Animal[];
+  selectedAnimal?: string;
+  onAnimalSelect: (animalId: string) => void;
+}
+
+const getEstadoColor = (estado: string) => {
+  const colores: Record<string, string> = {
+    'Vacía': 'bg-blue-50 text-blue-700 border-blue-200',
+    'Gestación': 'bg-purple-50 text-purple-700 border-purple-200',
+    'Lactancia': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'Seca': 'bg-gray-50 text-gray-700 border-gray-200',
+  };
+  return colores[estado] || 'bg-gray-50 text-gray-700 border-gray-200';
+};
+
+export function AnimalCards({ animals, selectedAnimal, onAnimalSelect }: AnimalCardsProps) {
+  const [imagesError, setImagesError] = useState<Record<string, boolean>>({});
+
+  if (animals.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border">
+        <p className="text-zinc-500">No hay animales para mostrar</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {animals.map((animal) => {
+        const imagenFalló = imagesError[animal.id];
+        const tieneImagen = animal.imagen && !imagenFalló;
+
+        return (
+          <div
+            key={animal.id}
+            onClick={() => onAnimalSelect(animal.id)}
+            className={`cursor-pointer rounded-xl border transition-all shadow-sm hover:shadow-md overflow-hidden ${
+              selectedAnimal === animal.id 
+                ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-200' 
+                : 'border-zinc-200 bg-white hover:border-emerald-300'
+            }`}
+          >
+            <div className="w-full h-48 bg-gradient-to-br from-emerald-50 to-emerald-100 relative overflow-hidden">
+              {tieneImagen ? (
+            <div className="w-full h-full flex items-center justify-center bg-zinc-100">
+              <img
+                src={animal.imagen}
+                alt={animal.nombre}
+                className="w-full h-full object-cover"
+                style={{ 
+                  maxHeight: '192px',
+                  minHeight: '192px',
+                  objectFit: 'cover'
+                }}
+                onError={() => {
+                  setImagesError(prev => ({ ...prev, [animal.id]: true }));
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full bg-zinc-100" />
+          )}
+              
+              <div className="absolute top-3 right-3">
+                <Badge className="bg-white/90 text-emerald-700 border border-emerald-200 shadow-sm">
+                  {animal.sexo}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="text-lg font-bold text-zinc-900 truncate">{animal.nombre}</h3>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Badge variant="secondary" className="bg-zinc-100 text-zinc-700 font-mono text-xs">
+                      {animal.arete}
+                    </Badge>
+                    <span className="text-xs text-zinc-400">·</span>
+                    <span className="text-xs text-zinc-500 truncate">{animal.raza}</span>
+                  </div>
+                </div>
+                <Badge variant="outline" className={`${getEstadoColor(animal.estadoReproductivo)} shrink-0`}>
+                  {animal.estadoReproductivo}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center text-sm text-zinc-600">
+                  <MapPin className="w-4 h-4 mr-2 text-zinc-400 shrink-0" />
+                  <span className="truncate">{animal.lote}</span>
+                </div>
+                <div className="flex items-center text-sm text-zinc-600">
+                  <Weight className="w-4 h-4 mr-2 text-zinc-400 shrink-0" />
+                  <span>{animal.ultimoPeso} kg</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-zinc-100 flex justify-between items-center">
+                <span className="text-xs text-zinc-500">{animal.edad} años</span>
+                <span className="text-xs text-zinc-400">
+                  {new Date(animal.fechaNacimiento).toLocaleDateString('es-ES')}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
