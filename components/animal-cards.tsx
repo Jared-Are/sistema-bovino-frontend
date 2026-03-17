@@ -2,8 +2,27 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Weight, MapPin, ImageOff } from 'lucide-react';
-import type { Animal } from '@/lib/types/animal';
 import { useState } from 'react';
+
+interface Animal {
+  id: string;
+  arete: string;
+  nombre: string;
+  lote: string;
+  potrero?: string;
+  estadoReproductivo: string;
+  estadoSalud: string;
+  ultimoPeso: number;
+  pesoNacimiento: number;
+  raza: string;
+  edad: number;
+  sexo: string;
+  fechaNacimiento: string;
+  fechaDestete?: string;
+  imagen?: string;
+  padre?: string;
+  madre?: string;
+}
 
 interface AnimalCardsProps {
   animals: Animal[];
@@ -14,9 +33,12 @@ interface AnimalCardsProps {
 const getEstadoColor = (estado: string) => {
   const colores: Record<string, string> = {
     'Vacía': 'bg-blue-50 text-blue-700 border-blue-200',
-    'Gestación': 'bg-purple-50 text-purple-700 border-purple-200',
-    'Lactancia': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'Gestante': 'bg-purple-50 text-purple-700 border-purple-200',    
+    'Lactando': 'bg-emerald-50 text-emerald-700 border-emerald-200', 
     'Seca': 'bg-gray-50 text-gray-700 border-gray-200',
+    'En celo': 'bg-pink-50 text-pink-700 border-pink-200',           
+    'Inseminada': 'bg-indigo-50 text-indigo-700 border-indigo-200',   
+    'Parida': 'bg-amber-50 text-amber-700 border-amber-200',          
   };
   return colores[estado] || 'bg-gray-50 text-gray-700 border-gray-200';
 };
@@ -50,24 +72,24 @@ export function AnimalCards({ animals, selectedAnimal, onAnimalSelect }: AnimalC
           >
             <div className="w-full h-48 bg-gradient-to-br from-emerald-50 to-emerald-100 relative overflow-hidden">
               {tieneImagen ? (
-            <div className="w-full h-full flex items-center justify-center bg-zinc-100">
-              <img
-                src={animal.imagen}
-                alt={animal.nombre}
-                className="w-full h-full object-cover"
-                style={{ 
-                  maxHeight: '192px',
-                  minHeight: '192px',
-                  objectFit: 'cover'
-                }}
-                onError={() => {
-                  setImagesError(prev => ({ ...prev, [animal.id]: true }));
-                }}
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full bg-zinc-100" />
-          )}
+                <div className="w-full h-full flex items-center justify-center bg-zinc-100">
+                  <img
+                    src={animal.imagen}
+                    alt={animal.nombre}
+                    className="w-full h-full object-cover"
+                    style={{ 
+                      maxHeight: '192px',
+                      minHeight: '192px',
+                      objectFit: 'cover'
+                    }}
+                    onError={() => {
+                      setImagesError(prev => ({ ...prev, [animal.id]: true }));
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full bg-zinc-100" />
+              )}
               
               <div className="absolute top-3 right-3">
                 <Badge className="bg-white/90 text-emerald-700 border border-emerald-200 shadow-sm">

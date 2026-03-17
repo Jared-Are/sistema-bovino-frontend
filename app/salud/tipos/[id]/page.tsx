@@ -6,21 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
-const razaSchema = z.object({
+const tipoSchema = z.object({
   nombre: z.string()
     .min(2, "El nombre es muy corto")
     .max(50, "El nombre es muy largo")
     .regex(/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/, "Solo letras y espacios"),
-  descripcion: z.string().optional(),
 });
 
-export default function EditarRazaPage() {
+export default function EditarTipoPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -31,11 +29,10 @@ export default function EditarRazaPage() {
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
-    descripcion: '',
   });
 
   useEffect(() => {
-    const fetchRaza = async () => {
+    const fetchTipo = async () => {
       if (!id) {
         setError("ID no válido");
         setLoading(false);
@@ -49,20 +46,19 @@ export default function EditarRazaPage() {
           return;
         }
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas/${id}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tipos-tratamiento/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
 
-        if (!response.ok) throw new Error('Error al cargar raza');
+        if (!response.ok) throw new Error('Error al cargar tipo');
         
         const data = await response.json();
         
         setFormData({
           nombre: data.nombre || '',
-          descripcion: data.descripcion || '',
         });
 
       } catch (err: any) {
@@ -73,7 +69,7 @@ export default function EditarRazaPage() {
       }
     };
 
-    fetchRaza();
+    fetchTipo();
   }, [id, router, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,11 +77,11 @@ export default function EditarRazaPage() {
     setSaving(true);
 
     try {
-      const valid = razaSchema.parse(formData);
+      const valid = tipoSchema.parse(formData);
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tipos-tratamiento/${id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -100,12 +96,12 @@ export default function EditarRazaPage() {
       }
       
       toast({ 
-        title: "¡Raza Actualizada!", 
-        description: `${valid.nombre} ha sido actualizada.`,
+        title: "¡Tipo Actualizado!", 
+        description: `${valid.nombre} ha sido actualizado.`,
         className: "bg-green-600 text-white"
       });
       
-      router.push('/parametros/razas');
+      router.push('/salud/tipos');
 
     } catch (err: any) {
       const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
@@ -130,9 +126,9 @@ export default function EditarRazaPage() {
       <div className="min-h-screen bg-zinc-50 p-8">
         <div className="flex flex-col items-center justify-center h-64 text-center p-6 bg-red-50 rounded-lg border border-red-100">
           <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-          <h3 className="text-lg font-bold text-red-700 mb-2">Error al cargar raza</h3>
+          <h3 className="text-lg font-bold text-red-700 mb-2">Error al cargar tipo</h3>
           <p className="text-muted-foreground max-w-md">{error}</p>
-          <Button className="mt-4" onClick={() => router.push("/parametros/razas")}>
+          <Button className="mt-4" onClick={() => router.push("/salud/tipos")}>
             Volver a la lista
           </Button>
         </div>
@@ -142,21 +138,21 @@ export default function EditarRazaPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8">
-      <Link href="/parametros/razas">
+      <Link href="/salud/tipos">
         <Button variant="ghost" size="sm" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Volver a Razas
+          <ArrowLeft className="h-4 w-4 mr-2" /> Volver
         </Button>
       </Link>
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Editar Raza</CardTitle>
-          <CardDescription>Modifica los datos de la raza</CardDescription>
+          <CardTitle className="text-2xl">Editar Tipo de Tratamiento</CardTitle>
+          <CardDescription>Modifica el nombre del tipo</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre de la Raza *</Label>
+              <Label htmlFor="nombre">Nombre del Tipo *</Label>
               <Input
                 id="nombre"
                 value={formData.nombre}
@@ -165,28 +161,17 @@ export default function EditarRazaPage() {
                   if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(val)) return;
                   setFormData({ ...formData, nombre: val });
                 }}
-                placeholder="Ej: Brahman"
+                placeholder="Ej: Vacuna, Desparasitante..."
                 required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="descripcion">Descripción</Label>
-              <Textarea
-                id="descripcion"
-                value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                placeholder="Características de la raza..."
-                rows={4}
               />
             </div>
 
             <div className="flex gap-3 pt-4">
               <Button type="submit" disabled={saving} className="bg-emerald-600">
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                {saving ? "Guardando..." : "Actualizar Raza"}
+                {saving ? "Guardando..." : "Actualizar Tipo"}
               </Button>
-              <Link href="/parametros/razas">
+              <Link href="/salud/tipos">
                 <Button type="button" variant="outline">Cancelar</Button>
               </Link>
             </div>

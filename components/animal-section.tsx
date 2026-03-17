@@ -3,13 +3,57 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Beef } from 'lucide-react';
 import { AnimalFilters } from './animal-filters';
 import { AnimalDetailsSheet } from './animal-details-sheet';
 import { AnimalCards } from './animal-cards';
-import { animalesApi } from '@/lib/api/animales';
-import type { Animal, AnimalBackend, EstadoReproductivo } from '@/lib/types/animal';
 import Link from 'next/link';
+
+type SexoAnimal = 'Macho' | 'Hembra';
+type EstadoReproductivo = 'vacia' | 'gestacion' | 'lactancia' | 'seco' | 'preparto';
+
+interface AnimalBackend {
+  animal_id: number;
+  arete: string;
+  nombre: string | null;
+  sexo: SexoAnimal;
+  peso_nacimiento: number;
+  peso_actual: number;
+  fecha_nacimiento: string;
+  fecha_destete?: string | null;
+  estado_reproductivo: string;
+  raza?: { raza_id: number; nombre: string };
+  lote?: { lote_id: number; nombre: string };
+  potrero?: { potrero_id: number; nombre: string };
+  madre?: { animal_id: number; nombre: string };
+  padre?: { animal_id: number; nombre: string };
+  imagen?: string;
+}
+
+interface Animal {
+  id: string;
+  arete: string;
+  nombre: string;
+  lote: string;
+  potrero?: string;
+  estadoReproductivo: EstadoReproductivo;
+  estadoSalud: 'sano' | 'enfermo' | 'tratamiento' | 'critico';
+  ultimoPeso: number;
+  pesoNacimiento: number;
+  raza: string;
+  edad: number;
+  sexo: SexoAnimal;
+  fechaNacimiento: string;
+  fechaDestete?: string;
+  imagen?: string;
+  padre?: string;
+  madre?: string;
+  montas: any[];
+  vacunas: any[];
+  tratamientos: any[];
+  pesajes: any[];
+  produccionDiaria?: number;
+}
 
 const calcularEdadEnAños = (fechaNacimiento: string): number => {
   const nacimiento = new Date(fechaNacimiento);
@@ -24,25 +68,20 @@ const calcularEdadEnAños = (fechaNacimiento: string): number => {
   return edad;
 };
 
-// Mapear estados del backend al formato del frontend
 const mapEstadoReproductivo = (estadoBackend: string): EstadoReproductivo => {
   const mapa: Record<string, EstadoReproductivo> = {
     'Vacía': 'vacia',
-    'Gestación': 'gestacion',
-    'Lactancia': 'lactancia',
+    'Gestante': 'gestacion',     
+    'Lactando': 'lactancia',       
     'Seca': 'seco',
-    'Preparto': 'preparto',
-    'vacia': 'vacia',
-    'gestacion': 'gestacion',
-    'lactancia': 'lactancia',
-    'seco': 'seco',
-    'preparto': 'preparto',
+    'En celo': 'vacia',           
+    'Inseminada': 'gestacion',    
+    'Parida': 'lactancia',
   };
   
   return mapa[estadoBackend] || 'vacia';
 };
 
-// Mapear datos del backend al frontend
 const mapBackendToFrontend = (backend: AnimalBackend): Animal => ({
   id: backend.animal_id.toString(),
   arete: backend.arete,
@@ -50,7 +89,7 @@ const mapBackendToFrontend = (backend: AnimalBackend): Animal => ({
   sexo: backend.sexo,
   raza: backend.raza?.nombre || 'Sin raza',
   fechaNacimiento: backend.fecha_nacimiento.split('T')[0],
-  fechaDestete: backend.fecha_destete ? backend.fecha_destete.split('T')[0] : undefined, // 👈 AHORA RECONOCE
+  fechaDestete: backend.fecha_destete ? backend.fecha_destete.split('T')[0] : undefined,
   edad: calcularEdadEnAños(backend.fecha_nacimiento),
   ultimoPeso: backend.peso_actual,
   pesoNacimiento: backend.peso_nacimiento,
@@ -84,7 +123,7 @@ export function AnimalSection() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/login');
+      router.push('/');
     }
   }, [router]);
 
@@ -95,11 +134,23 @@ export function AnimalSection() {
       
       const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/login');
+        router.push('/');
         return;
       }
 
-      const data = await animalesApi.getAll(token);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('No autorizado');
+        throw new Error('Error al cargar animales');
+      }
+
+      const data = await response.json();
       const animalesMapeados = data.map(mapBackendToFrontend);
       setAnimales(animalesMapeados);
     } catch (err: any) {
@@ -109,7 +160,7 @@ export function AnimalSection() {
       if (err.message === 'No autorizado') {
         localStorage.removeItem('token');
         localStorage.removeItem('usuario');
-        router.push('/login');
+        router.push('/');
       }
     } finally {
       setCargando(false);
@@ -156,6 +207,7 @@ export function AnimalSection() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-zinc-900">
+                <Beef className="h-6 w-6 text-emerald-600" />
                 Animales
               </h1>
               <p className="text-sm text-zinc-500 mt-1">

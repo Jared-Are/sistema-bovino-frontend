@@ -6,11 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save, Loader2, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { potrerosApi } from '@/lib/api/potreros';
 import { z } from 'zod';
 
 const potreroSchema = z.object({
@@ -39,7 +37,19 @@ export default function NuevoPotreroPage() {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
-      await potrerosApi.create(valid, token);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/potreros`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(valid),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al crear potrero');
+      }
       
       toast({ 
         title: "¡Potrero Creado!", 
@@ -101,7 +111,7 @@ export default function NuevoPotreroPage() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button type="submit" disabled={loading} className="bg-emerald-600">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Guardar Potrero
               </Button>

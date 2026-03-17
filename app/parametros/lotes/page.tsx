@@ -16,13 +16,16 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { lotesApi } from '@/lib/api/lotes';
-import type { LoteBackend } from '@/lib/types/lote';
+
+type Lote = {
+  lote_id: number;
+  nombre: string;
+};
 
 export default function LotesPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [lotes, setLotes] = useState<LoteBackend[]>([]);
+  const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -33,7 +36,17 @@ export default function LotesPage() {
         router.push('/');
         return;
       }
-      const data = await lotesApi.getAll(token);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Error al cargar lotes');
+      
+      const data = await response.json();
       setLotes(data);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -49,6 +62,30 @@ export default function LotesPage() {
   const filteredLotes = lotes.filter(l => 
     l.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async (id: number, nombre: string) => {
+    if (!confirm(`¿Eliminar lote ${nombre}?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Error al eliminar');
+      
+      setLotes(lotes.filter(l => l.lote_id !== id));
+      toast({ title: "Lote eliminado" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8">
@@ -132,19 +169,7 @@ export default function LotesPage() {
                             variant="ghost" 
                             size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={async () => {
-                              if (confirm(`¿Eliminar lote ${lote.nombre}?`)) {
-                                try {
-                                  const token = localStorage.getItem('token');
-                                  if (!token) return;
-                                  await lotesApi.delete(lote.lote_id, token);
-                                  setLotes(lotes.filter(l => l.lote_id !== lote.lote_id));
-                                  toast({ title: "Lote eliminado" });
-                                } catch (error: any) {
-                                  toast({ title: "Error", description: error.message, variant: "destructive" });
-                                }
-                              }
-                            }}
+                            onClick={() => handleDelete(lote.lote_id, lote.nombre)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

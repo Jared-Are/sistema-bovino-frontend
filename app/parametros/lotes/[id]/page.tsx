@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { lotesApi } from '@/lib/api/lotes';
 import { z } from 'zod';
 
 const loteSchema = z.object({
@@ -43,18 +42,26 @@ export default function EditarLotePage() {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          router.push('/login');
+          router.push('/');
           return;
         }
 
-        const data = await lotesApi.getById(Number(id), token);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) throw new Error('Error al cargar lote');
+        
+        const data = await response.json();
         
         setFormData({
           nombre: data.nombre || '',
         });
 
       } catch (err: any) {
-        console.error("Error cargando lote:", err);
         setError(err.message);
         toast({ title: "Error", description: err.message, variant: "destructive" });
       } finally {
@@ -74,7 +81,19 @@ export default function EditarLotePage() {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
-      await lotesApi.update(Number(id), valid, token);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(valid),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al actualizar');
+      }
       
       toast({ 
         title: "¡Lote Actualizado!", 
@@ -83,7 +102,6 @@ export default function EditarLotePage() {
       });
       
       router.push('/parametros/lotes');
-      router.refresh();
 
     } catch (err: any) {
       const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
@@ -98,7 +116,6 @@ export default function EditarLotePage() {
       <div className="min-h-screen bg-zinc-50 p-8">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-          <p className="ml-3 text-muted-foreground">Cargando lote...</p>
         </div>
       </div>
     );
@@ -150,7 +167,7 @@ export default function EditarLotePage() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button type="submit" disabled={saving} className="bg-emerald-600">
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 {saving ? "Guardando..." : "Actualizar Lote"}
               </Button>

@@ -6,27 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
-const razaSchema = z.object({
+const tipoSchema = z.object({
   nombre: z.string()
     .min(2, "El nombre es muy corto")
     .max(50, "El nombre es muy largo")
     .regex(/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/, "Solo letras y espacios"),
-  descripcion: z.string().optional(),
 });
 
-export default function NuevaRazaPage() {
+export default function NuevoTipoPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
-    descripcion: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,11 +31,11 @@ export default function NuevaRazaPage() {
     setLoading(true);
 
     try {
-      const valid = razaSchema.parse(formData);
+      const valid = tipoSchema.parse(formData);
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tipos-tratamiento`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -49,16 +46,16 @@ export default function NuevaRazaPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Error al crear raza');
+        throw new Error(error.message || 'Error al crear tipo');
       }
       
       toast({ 
-        title: "¡Raza Creada!", 
-        description: `${valid.nombre} ha sido registrada.`,
+        title: "¡Tipo Creado!", 
+        description: `${valid.nombre} ha sido registrado.`,
         className: "bg-green-600 text-white"
       });
       
-      router.push('/parametros/razas');
+      router.push('/salud/tipos');
     } catch (err: any) {
       const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
       toast({ title: "Error", description: mensaje, variant: "destructive" });
@@ -69,21 +66,21 @@ export default function NuevaRazaPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8">
-      <Link href="/parametros/razas">
+      <Link href="/salud/tipos">
         <Button variant="ghost" size="sm" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Volver a Razas
+          <ArrowLeft className="h-4 w-4 mr-2" /> Volver
         </Button>
       </Link>
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Nueva Raza</CardTitle>
-          <CardDescription>Registra una nueva raza de animal</CardDescription>
+          <CardTitle className="text-2xl">Nuevo Tipo de Tratamiento</CardTitle>
+          <CardDescription>Registra una nueva categoría de tratamiento sanitario</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre de la Raza *</Label>
+              <Label htmlFor="nombre">Nombre del Tipo *</Label>
               <Input
                 id="nombre"
                 value={formData.nombre}
@@ -92,28 +89,17 @@ export default function NuevaRazaPage() {
                   if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(val)) return;
                   setFormData({ ...formData, nombre: val });
                 }}
-                placeholder="Ej: Brahman"
+                placeholder="Ej: Vacuna, Desparasitante, Antibiótico..."
                 required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="descripcion">Descripción</Label>
-              <Textarea
-                id="descripcion"
-                value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                placeholder="Características de la raza..."
-                rows={4}
               />
             </div>
 
             <div className="flex gap-3 pt-4">
               <Button type="submit" disabled={loading} className="bg-emerald-600">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Guardar Raza
+                {loading ? "Guardando..." : "Guardar Tipo"}
               </Button>
-              <Link href="/parametros/razas">
+              <Link href="/salud/tipos">
                 <Button type="button" variant="outline">Cancelar</Button>
               </Link>
             </div>

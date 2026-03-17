@@ -1,4 +1,6 @@
 'use client';
+
+import { useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -8,7 +10,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Animal } from '@/lib/types/animal';
 import {
   Calendar,
   Weight,
@@ -26,9 +27,41 @@ import {
   Syringe,
   FileText,
   Pencil,
-    Trash2
+  Trash2,
+  Pill,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Activity
 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+
+interface Animal {
+  id: string;
+  arete: string;
+  nombre: string;
+  lote: string;
+  potrero?: string;
+  estadoReproductivo: string;
+  estadoSalud: string;
+  ultimoPeso: number;
+  pesoNacimiento?: number;
+  raza: string;
+  edad: number;
+  sexo: string;
+  fechaNacimiento: string;
+  fechaDestete?: string;
+  imagen?: string;
+  padre?: string;
+  madre?: string;
+  montas: any[];
+  tratamientos: any[];
+  vacunas: any[];
+  pesajes: any[];
+  produccionDiaria?: number;
+}
 
 interface AnimalDetailsSheetProps {
   animal: Animal | null;
@@ -36,20 +69,83 @@ interface AnimalDetailsSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type TratamientoReal = {
+  id: number;
+  tipo_tratamiento?: { id: number; nombre: string };
+  estado: string;
+  fecha: string;
+  descripcion?: string;
+};
+
 export function AnimalDetailsSheet({
   animal,
   isOpen,
   onOpenChange,
 }: AnimalDetailsSheetProps) {
+  const [tratamientos, setTratamientos] = useState<TratamientoReal[]>([]);
+  const [cargandoTratamientos, setCargandoTratamientos] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const cargarTratamientos = async () => {
+    if (!animal) return;
+    
+    try {
+      setCargandoTratamientos(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // 👇 CORREGIDO: Filtrar por animal_id
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/salud/tratamientos?animal_id=${animal.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Error al cargar tratamientos');
+
+      const data = await response.json();
+      
+      // 👇 Asegurar que solo muestra los de este animal
+      const tratamientosDelAnimal = data.filter((t: any) => 
+        t.animal?.animal_id?.toString() === animal.id || 
+        t.animal_id?.toString() === animal.id
+      );
+      
+      setTratamientos(tratamientosDelAnimal);
+    } catch (error) {
+      console.error('Error cargando tratamientos:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los tratamientos",
+        variant: "destructive",
+      });
+    } finally {
+      setCargandoTratamientos(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && animal) {
+      cargarTratamientos();
+    }
+  }, [isOpen, animal]);
+
   if (!animal) return null;
 
   const getReproductivoBadgeColor = (estado: string) => {
     const colors: Record<string, string> = {
-      'Vacía': 'bg-blue-100 text-blue-800',
-      'Gestación': 'bg-purple-100 text-purple-800',
-      'Lactancia': 'bg-emerald-100 text-emerald-800',
-      'Seca': 'bg-gray-100 text-gray-800',
-      'Preparto': 'bg-orange-100 text-orange-800',
+    'Vacía': 'bg-blue-100 text-blue-800',
+    'Gestante': 'bg-purple-100 text-purple-800',    
+    'Lactando': 'bg-emerald-100 text-emerald-800',   
+    'Seca': 'bg-gray-100 text-gray-800',
+    'En celo': 'bg-pink-100 text-pink-800',         
+    'Inseminada': 'bg-indigo-100 text-indigo-800',   
+    'Parida': 'bg-amber-100 text-amber-800',      
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
   };
@@ -64,7 +160,42 @@ export function AnimalDetailsSheet({
     return colors[estado] || 'bg-emerald-100 text-emerald-800';
   };
 
-  // formatear fecha
+  const getEstadoTratamientoColor = (estado: string) => {
+    switch (estado) {
+      case "ACTIVO":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "PENDIENTE":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "COMPLETADO":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      case "CANCELADO":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getEstadoIcono = (estado: string) => {
+    switch (estado) {
+      case "ACTIVO":
+        return <Activity className="h-3 w-3" />;
+      case "PENDIENTE":
+        return <Clock className="h-3 w-3" />;
+      case "COMPLETADO":
+        return <CheckCircle className="h-3 w-3" />;
+      case "CANCELADO":
+        return <XCircle className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
+
+  const getIconoTratamiento = (tipoNombre?: string) => {
+    if (tipoNombre?.toLowerCase().includes("vacuna")) return <Syringe className="h-4 w-4" />;
+    if (tipoNombre?.toLowerCase().includes("desparasit")) return <Pill className="h-4 w-4" />;
+    return <Stethoscope className="h-4 w-4" />;
+  };
+
   const formatFecha = (fecha: string) => {
     return new Date(fecha).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -73,6 +204,14 @@ export function AnimalDetailsSheet({
     });
   };
 
+  const handleNuevoTratamiento = () => {
+    router.push(`/salud/nuevo?animalId=${animal.id}`);
+    onOpenChange(false);
+  };
+
+  const tratamientosActivos = tratamientos.filter(t => t.estado === 'ACTIVO' || t.estado === 'PENDIENTE');
+  const tratamientosHistorial = tratamientos.filter(t => t.estado === 'COMPLETADO' || t.estado === 'CANCELADO');
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent 
@@ -80,69 +219,68 @@ export function AnimalDetailsSheet({
         className="w-full sm:w-[85%] md:w-[75%] lg:w-[60%] xl:w-[50%] max-w-4xl overflow-y-auto p-0"
       >
         <div className="relative">
-    
-          <div className={`bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10 ${animal.imagen ? 'bg-opacity-90 backdrop-blur-sm' : ''}`}>
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10">
             <SheetHeader className="space-y-4">
               <div className="flex items-start justify-between">
-  <div className="flex-1">
-    <SheetTitle className="text-3xl font-bold text-zinc-900">
-      {animal.nombre}
-    </SheetTitle>
-    <div className="flex items-center gap-2 mt-2 flex-wrap">
-      <Badge className="bg-emerald-600 text-white">{animal.arete}</Badge>
-      <Badge variant="outline" className="bg-white">
-        {animal.raza}
-      </Badge>
-      {animal.potrero && (
-        <Badge variant="outline" className="bg-white flex items-center gap-1">
-          <TreePine className="w-3 h-3" />
-          {animal.potrero}
-        </Badge>
-      )}
-    </div>
-  </div>
-  
-  <div className="flex gap-2 ml-4">
-    <Link href={`/animales/${animal.id}`}>
-      <Button size="sm" variant="outline" className="gap-2">
-        <Pencil className="w-4 h-4" />
-        <span className="hidden sm:inline">Editar</span>
-      </Button>
-    </Link>
-    <Button 
-      size="sm" 
-      variant="destructive" 
-      className="gap-2"
-      onClick={async (e) => {
-        e.stopPropagation();
-        if (confirm('¿Estás seguro de eliminar este animal?')) {
-          try {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-            
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
-              {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-              }
-            );
-            
-            if (response.ok) {
-              onOpenChange(false);
-              window.location.reload();
-            }
-          } catch (error) {
-            console.error('Error al eliminar:', error);
-          }
-        }
-      }}
-    >
-      <Trash2 className="w-4 h-4" />
-      <span className="hidden sm:inline">Eliminar</span>
-    </Button>
-  </div>
-</div>
+                <div className="flex-1">
+                  <SheetTitle className="text-3xl font-bold text-zinc-900">
+                    {animal.nombre}
+                  </SheetTitle>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <Badge className="bg-emerald-600 text-white">{animal.arete}</Badge>
+                    <Badge variant="outline" className="bg-white">
+                      {animal.raza}
+                    </Badge>
+                    {animal.potrero && (
+                      <Badge variant="outline" className="bg-white flex items-center gap-1">
+                        <TreePine className="w-3 h-3" />
+                        {animal.potrero}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 ml-4">
+                  <Link href={`/animales/${animal.id}`}>
+                    <Button size="sm" variant="outline" className="gap-2">
+                      <Pencil className="w-4 h-4" />
+                      <span className="hidden sm:inline">Editar</span>
+                    </Button>
+                  </Link>
+                  <Button 
+                    size="sm" 
+                    variant="destructive" 
+                    className="gap-2"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (confirm('¿Estás seguro de eliminar este animal?')) {
+                        try {
+                          const token = localStorage.getItem('token');
+                          if (!token) return;
+                          
+                          const response = await fetch(
+                            `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
+                            {
+                              method: 'DELETE',
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            }
+                          );
+                          
+                          if (response.ok) {
+                            onOpenChange(false);
+                            window.location.reload();
+                          }
+                        } catch (error) {
+                          console.error('Error al eliminar:', error);
+                        }
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Eliminar</span>
+                  </Button>
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
                 <div className="bg-white rounded-lg p-3 border border-zinc-200">
@@ -165,17 +303,10 @@ export function AnimalDetailsSheet({
 
               <div className="flex gap-2 flex-wrap pt-2">
                 <Badge className={getReproductivoBadgeColor(animal.estadoReproductivo)}>
-                  {animal.estadoReproductivo === 'vacia' && 'Vacía'}
-                  {animal.estadoReproductivo === 'gestacion' && 'Gestación'}
-                  {animal.estadoReproductivo === 'lactancia' && 'Lactancia'}
-                  {animal.estadoReproductivo === 'seco' && 'Seco'}
-                  {animal.estadoReproductivo === 'preparto' && 'Preparto'}
+                  {animal.estadoReproductivo}
                 </Badge>
                 <Badge className={getSaludBadgeColor(animal.estadoSalud)}>
-                  {animal.estadoSalud === 'sano' && 'Sano'}
-                  {animal.estadoSalud === 'enfermo' && 'Enfermo'}
-                  {animal.estadoSalud === 'tratamiento' && 'Tratamiento'}
-                  {animal.estadoSalud === 'critico' && 'Crítico'}
+                  {animal.estadoSalud}
                 </Badge>
               </div>
             </SheetHeader>
@@ -192,7 +323,7 @@ export function AnimalDetailsSheet({
             </TabsList>
 
             <TabsContent value="general" className="space-y-6">
-              
+              {/* Contenido general igual */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                   <User className="w-4 h-4" /> Información Básica
@@ -272,7 +403,6 @@ export function AnimalDetailsSheet({
                 </div>
               </div>
 
-              {/* Genealogía */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                   <Droplets className="w-4 h-4" /> Genealogía
@@ -308,48 +438,28 @@ export function AnimalDetailsSheet({
               </div>
             </TabsContent>
 
-            {/* Tab: Reproducción */}
             <TabsContent value="reproduccion" className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                     <Heart className="w-4 h-4" /> Historial de Montas
                   </h3>
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Registrar Monta
-                  </Button>
+                  <Link href={`/reproduccion/nuevo?animalId=${animal.id}`}>
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Registrar Monta
+                    </Button>
+                  </Link>
                 </div>
 
                 {animal.montas && animal.montas.length > 0 ? (
                   <div className="space-y-3">
                     {animal.montas.map((monta) => (
-                      <div
-                        key={monta.id}
-                        className="border border-zinc-200 rounded-lg p-4 space-y-2"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-zinc-900">
-                              {monta.tipo === 'natural' ? 'Monta Natural' : 'Inseminación Artificial'}
-                            </p>
-                            <p className="text-xs text-zinc-500 mt-1">
-                              Fecha: {formatFecha(monta.fecha)}
-                            </p>
-                          </div>
-                          <Badge className="bg-blue-100 text-blue-800">
-                            {monta.semental}
-                          </Badge>
-                        </div>
-                        {monta.diagnostico && (
-                          <div className="pt-2 border-t border-zinc-100">
-                            <p className="text-xs text-zinc-500 font-medium">Diagnóstico</p>
-                            <p className="text-sm font-medium text-emerald-700">
-                              {monta.diagnostico === 'positivo' ? 'Positivo' : 'Negativo'} -{' '}
-                              {monta.diagnosticoFecha && formatFecha(monta.diagnosticoFecha)}
-                            </p>
-                          </div>
-                        )}
+                      <div key={monta.id} className="border border-zinc-200 rounded-lg p-4">
+                        <p className="text-sm font-medium text-zinc-900">{monta.tipo}</p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Fecha: {formatFecha(monta.fecha)}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -362,118 +472,99 @@ export function AnimalDetailsSheet({
               </div>
             </TabsContent>
 
-            {/* Tab: Salud */}
             <TabsContent value="salud" className="space-y-6">
-              {/* Tratamientos */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Tratamientos
+                    <FileText className="w-4 h-4" /> Tratamientos Activos
                   </h3>
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button 
+                    size="sm" 
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={handleNuevoTratamiento}
+                  >
                     <Plus className="w-4 h-4 mr-1" />
                     Nuevo Tratamiento
                   </Button>
                 </div>
 
-                {animal.tratamientos && animal.tratamientos.length > 0 ? (
+                {cargandoTratamientos ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
+                  </div>
+                ) : tratamientosActivos.length > 0 ? (
                   <div className="space-y-3">
-                    {animal.tratamientos.map((tratamiento) => (
-                      <div
-                        key={tratamiento.id}
-                        className="border border-zinc-200 rounded-lg p-4 space-y-2"
-                      >
+                    {tratamientosActivos.map((t) => (
+                      <div key={t.id} className="border border-zinc-200 rounded-lg p-4 bg-white">
                         <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-zinc-900">
-                              {tratamiento.tipo}
-                            </p>
-                            <p className="text-xs text-zinc-500 mt-1">
-                              Por: {tratamiento.veterinario}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            {getIconoTratamiento(t.tipo_tratamiento?.nombre)}
+                            <div>
+                              <p className="text-sm font-medium text-zinc-900">
+                                {t.tipo_tratamiento?.nombre || 'Tratamiento'}
+                              </p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                {formatFecha(t.fecha)}
+                              </p>
+                            </div>
                           </div>
-                          <Badge
-                            className={
-                              tratamiento.estado === 'activo'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : tratamiento.estado === 'completado'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-red-100 text-red-800'
-                            }
-                          >
-                            {tratamiento.estado === 'activo' && 'Activo'}
-                            {tratamiento.estado === 'completado' && 'Completado'}
-                            {tratamiento.estado === 'suspendido' && 'Suspendido'}
+                          <Badge className={getEstadoTratamientoColor(t.estado)}>
+                            <span className="flex items-center gap-1">
+                              {getEstadoIcono(t.estado)}
+                              {t.estado}
+                            </span>
                           </Badge>
                         </div>
-                        <p className="text-xs text-zinc-500">
-                          {formatFecha(tratamiento.fecha)}
-                        </p>
+                        {t.descripcion && (
+                          <p className="text-xs text-zinc-600 mt-2 border-t pt-2">
+                            {t.descripcion}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center">
+                  <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center bg-white">
                     <Stethoscope className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                    <p className="text-sm text-zinc-500">Sin tratamientos registrados</p>
+                    <p className="text-sm text-zinc-500">No hay tratamientos activos</p>
                   </div>
                 )}
               </div>
 
-              {/* Vacunas */}
-              <div className="space-y-4 pt-6 border-t border-zinc-200">
-                <div className="flex items-center justify-between">
+              {tratamientosHistorial.length > 0 && (
+                <div className="space-y-4 pt-6 border-t border-zinc-200">
                   <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                    <Syringe className="w-4 h-4" /> Vacunas
+                    <FileText className="w-4 h-4" /> Historial
                   </h3>
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Registrar Vacuna
-                  </Button>
-                </div>
-
-                {animal.vacunas && animal.vacunas.length > 0 ? (
                   <div className="space-y-3">
-                    {animal.vacunas.map((vacuna) => (
-                      <div
-                        key={vacuna.id}
-                        className="border border-zinc-200 rounded-lg p-4 space-y-2"
-                      >
+                    {tratamientosHistorial.map((t) => (
+                      <div key={t.id} className="border border-zinc-200 rounded-lg p-4 bg-zinc-50">
                         <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-zinc-900">{vacuna.nombre}</p>
-                            <p className="text-xs text-zinc-500 mt-1">
-                              Veterinario: {vacuna.veterinario}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            {getIconoTratamiento(t.tipo_tratamiento?.nombre)}
+                            <div>
+                              <p className="text-sm font-medium text-zinc-900">
+                                {t.tipo_tratamiento?.nombre || 'Tratamiento'}
+                              </p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                {formatFecha(t.fecha)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="text-zinc-500">Fecha aplicación</p>
-                            <p className="font-medium text-zinc-900">
-                              {formatFecha(vacuna.fecha)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-zinc-500">Próxima dosis</p>
-                            <p className="font-medium text-zinc-900">
-                              {formatFecha(vacuna.proximaFecha)}
-                            </p>
-                          </div>
+                          <Badge className={getEstadoTratamientoColor(t.estado)}>
+                            <span className="flex items-center gap-1">
+                              {getEstadoIcono(t.estado)}
+                              {t.estado}
+                            </span>
+                          </Badge>
                         </div>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center">
-                    <Syringe className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                    <p className="text-sm text-zinc-500">Sin vacunas registradas</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </TabsContent>
 
-            {/* Tab: Producción */}
             <TabsContent value="produccion" className="space-y-6">
               {animal.sexo === 'Hembra' ? (
                 <div className="space-y-4">
@@ -501,21 +592,9 @@ export function AnimalDetailsSheet({
                     {animal.pesajes && animal.pesajes.length > 0 ? (
                       <div className="space-y-2">
                         {animal.pesajes.map((pesaje) => (
-                          <div
-                            key={pesaje.id}
-                            className="border border-zinc-200 rounded-lg p-3 flex items-center justify-between"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Weight className="w-4 h-4 text-zinc-400" />
-                              <div>
-                                <p className="text-sm font-medium text-zinc-900">
-                                  {pesaje.peso} kg
-                                </p>
-                                <p className="text-xs text-zinc-500">
-                                  {formatFecha(pesaje.fecha)}
-                                </p>
-                              </div>
-                            </div>
+                          <div key={pesaje.id} className="border border-zinc-200 rounded-lg p-3">
+                            <p className="text-sm font-medium text-zinc-900">{pesaje.peso} kg</p>
+                            <p className="text-xs text-zinc-500">{formatFecha(pesaje.fecha)}</p>
                           </div>
                         ))}
                       </div>

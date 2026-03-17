@@ -52,6 +52,7 @@ const animalSchema = z.object({
         .optional(),
     animalMadreId: z.string().optional(),
     animalPadreId: z.string().optional(),
+    estadoReproductivo: z.string().optional(), 
 });
 
 type Raza = { raza_id: number; nombre: string; };
@@ -87,6 +88,7 @@ export default function NuevoAnimalPage() {
         pesoActual: "",
         animalMadreId: "",
         animalPadreId: "",
+        estadoReproductivo: "Vacía", 
     });
 
     useEffect(() => {
@@ -98,7 +100,7 @@ export default function NuevoAnimalPage() {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
-            router.push('/login');
+            router.push('/');
         }
     }, [router]);
 
@@ -108,7 +110,7 @@ export default function NuevoAnimalPage() {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    router.push('/login');
+                    router.push('/');
                     return;
                 }
 
@@ -211,12 +213,13 @@ export default function NuevoAnimalPage() {
                 peso_actual: valid.pesoActual || valid.pesoNacimiento || 0,
                 animal_madre_id: valid.animalMadreId === "sin-madre" ? null : valid.animalMadreId ? Number(valid.animalMadreId) : null,
                 animal_padre_id: valid.animalPadreId === "sin-padre" ? null : valid.animalPadreId ? Number(valid.animalPadreId) : null,
+                estado_reproductivo: valid.estadoReproductivo || "Vacía", // 👈 AGREGADO
                 imagen: fotoUrl || null,
             };
 
             const token = localStorage.getItem('token');
             if (!token) {
-                router.push('/login');
+                router.push('/');
                 return;
             }
 
@@ -421,6 +424,25 @@ export default function NuevoAnimalPage() {
                                         onChange={(e) => setFormData({...formData, pesoActual: e.target.value})} />
                                 </div>
                                 <p className="text-xs mt-1">Si no se ingresa, se usa el peso al nacer</p>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-1 gap-4">
+                            <div>
+                                <Label>Estado Reproductivo</Label>
+                                <Select value={formData.estadoReproductivo} 
+                                    onValueChange={(v) => setFormData({...formData, estadoReproductivo: v})}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Vacía">Vacía</SelectItem>
+                                        <SelectItem value="Gestante">Gestante</SelectItem>
+                                        <SelectItem value="Lactando">Lactando</SelectItem>
+                                        <SelectItem value="Seca">Seca</SelectItem>
+                                        <SelectItem value="En celo">En celo</SelectItem>
+                                        <SelectItem value="Inseminada">Inseminada</SelectItem>
+                                        <SelectItem value="Parida">Parida</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 

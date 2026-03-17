@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { lotesApi } from '@/lib/api/lotes';
 import { z } from 'zod';
 
 const loteSchema = z.object({
@@ -36,7 +35,19 @@ export default function NuevoLotePage() {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
-      await lotesApi.create(valid, token);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(valid),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al crear lote');
+      }
       
       toast({ 
         title: "¡Lote Creado!", 
@@ -84,7 +95,7 @@ export default function NuevoLotePage() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button type="submit" disabled={loading} className="bg-emerald-600">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Guardar Lote
               </Button>

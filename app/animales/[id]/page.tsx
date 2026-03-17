@@ -18,8 +18,6 @@ import {
     Weight,
     Scale,
     AlertTriangle,
-    MapPin,
-    TreePine,
     Droplets
 } from "lucide-react";
 import Link from "next/link";
@@ -436,10 +434,12 @@ export default function EditarAnimalPage() {
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Vacía">Vacía</SelectItem>
-                                        <SelectItem value="Gestación">Gestación</SelectItem>
-                                        <SelectItem value="Lactancia">Lactancia</SelectItem>
+                                        <SelectItem value="Gestante">Gestante</SelectItem>
+                                        <SelectItem value="Lactando">Lactando</SelectItem>
                                         <SelectItem value="Seca">Seca</SelectItem>
-                                        <SelectItem value="Preparto">Preparto</SelectItem>
+                                        <SelectItem value="En celo">En celo</SelectItem>
+                                        <SelectItem value="Inseminada">Inseminada</SelectItem>
+                                        <SelectItem value="Parida">Parida</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

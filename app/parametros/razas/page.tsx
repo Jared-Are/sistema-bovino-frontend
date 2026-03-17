@@ -16,13 +16,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { razasApi } from '@/lib/api/razas';
-import type { RazaBackend } from '@/lib/types/raza';
+
+type Raza = {
+  raza_id: number;
+  nombre: string;
+  descripcion?: string;
+};
 
 export default function RazasPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [razas, setRazas] = useState<RazaBackend[]>([]);
+  const [razas, setRazas] = useState<Raza[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -30,10 +34,20 @@ export default function RazasPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/login');
+        router.push('/');
         return;
       }
-      const data = await razasApi.getAll(token);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Error al cargar razas');
+      
+      const data = await response.json();
       setRazas(data);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -49,6 +63,30 @@ export default function RazasPage() {
   const filteredRazas = razas.filter(r => 
     r.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async (id: number, nombre: string) => {
+    if (!confirm(`¿Eliminar raza ${nombre}?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Error al eliminar');
+      
+      setRazas(razas.filter(r => r.raza_id !== id));
+      toast({ title: "Raza eliminada" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8">
@@ -109,51 +147,42 @@ export default function RazasPage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[30%]">Nombre</TableHead>
-                  <TableHead className="w-[50%]">Descripción</TableHead>
-                  <TableHead className="w-[20%] text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRazas.map((raza) => (
-                  <TableRow key={raza.raza_id}>
-                    <TableCell className="font-medium">{raza.nombre}</TableCell>
-                    <TableCell>{raza.descripcion || '—'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-2">
-                        <Link href={`/parametros/razas/${raza.raza_id}`}>
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="text-red-500"
-                          onClick={async () => {
-                            if (confirm(`¿Eliminar raza ${raza.nombre}?`)) {
-                              try {
-                                const token = localStorage.getItem('token')!;
-                                await razasApi.delete(raza.raza_id, token);
-                                setRazas(razas.filter(r => r.raza_id !== raza.raza_id));
-                                toast({ title: "Raza eliminada" });
-                              } catch (error: any) {
-                                toast({ title: "Error", description: error.message, variant: "destructive" });
-                              }
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[30%]">Nombre</TableHead>
+                    <TableHead className="w-[50%]">Descripción</TableHead>
+                    <TableHead className="w-[20%] text-center">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredRazas.map((raza) => (
+                    <TableRow key={raza.raza_id}>
+                      <TableCell className="font-medium">{raza.nombre}</TableCell>
+                      <TableCell>{raza.descripcion || '—'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link href={`/parametros/razas/${raza.raza_id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDelete(raza.raza_id, raza.nombre)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
