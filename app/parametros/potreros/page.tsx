@@ -78,12 +78,17 @@ export default function PotrerosPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle>Lista de Potreros</CardTitle>
-            <div className="relative w-72">
+            <div className="relative w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-zinc-400" />
+              </span>
               <Input
-                placeholder="Buscar potrero..."
+                type="text"
+                placeholder="Buscar lote..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                style={{ paddingLeft: '2.5rem' }}
+                className="w-full border border-zinc-300 rounded-md"
               />
             </div>
           </div>
@@ -109,9 +114,9 @@ export default function PotrerosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="w-[30%]">Nombre</TableHead>
+                  <TableHead className="w-[50%]">Ubicación</TableHead>
+                  <TableHead className="w-[20%]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,7 +131,7 @@ export default function PotrerosPage() {
                         </div>
                       ) : '—'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell >
                       <div className="flex justify-end gap-2">
                         <Link href={`/parametros/potreros/${potrero.potrero_id}`}>
                           <Button variant="ghost" size="icon">

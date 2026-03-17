@@ -30,7 +30,7 @@ export default function LotesPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/login');
+        router.push('/');
         return;
       }
       const data = await lotesApi.getAll(token);
@@ -76,12 +76,17 @@ export default function LotesPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle>Lista de Lotes</CardTitle>
-            <div className="relative w-72">
+            <div className="relative w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-zinc-400" />
+              </span>
               <Input
+                type="text"
                 placeholder="Buscar lote..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                style={{ paddingLeft: '2.5rem' }}
+                className="w-full border border-zinc-300 rounded-md"
               />
             </div>
           </div>
@@ -104,50 +109,52 @@ export default function LotesPage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLotes.map((lote) => (
-                  <TableRow key={lote.lote_id}>
-                    <TableCell className="font-medium">{lote.nombre}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Link href={`/parametros/lotes/${lote.lote_id}`}>
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="text-red-500"
-                          onClick={async () => {
-                            if (confirm(`¿Eliminar lote ${lote.nombre}?`)) {
-                              try {
-                                const token = localStorage.getItem('token');
-                                if (!token) return;
-                                await lotesApi.delete(lote.lote_id, token);
-                                setLotes(lotes.filter(l => l.lote_id !== lote.lote_id));
-                                toast({ title: "Lote eliminado" });
-                              } catch (error: any) {
-                                toast({ title: "Error", description: error.message, variant: "destructive" });
-                              }
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[70%]">Nombre</TableHead>
+                    <TableHead className="w-[30%] text-center">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredLotes.map((lote) => (
+                    <TableRow key={lote.lote_id}>
+                      <TableCell className="font-medium">{lote.nombre}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link href={`/parametros/lotes/${lote.lote_id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={async () => {
+                              if (confirm(`¿Eliminar lote ${lote.nombre}?`)) {
+                                try {
+                                  const token = localStorage.getItem('token');
+                                  if (!token) return;
+                                  await lotesApi.delete(lote.lote_id, token);
+                                  setLotes(lotes.filter(l => l.lote_id !== lote.lote_id));
+                                  toast({ title: "Lote eliminado" });
+                                } catch (error: any) {
+                                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                                }
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

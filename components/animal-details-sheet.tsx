@@ -25,8 +25,10 @@ import {
   CalendarDays,
   Syringe,
   FileText,
-  Image as ImageIcon,
+  Pencil,
+    Trash2
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface AnimalDetailsSheetProps {
   animal: Animal | null;
@@ -82,24 +84,65 @@ export function AnimalDetailsSheet({
           <div className={`bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10 ${animal.imagen ? 'bg-opacity-90 backdrop-blur-sm' : ''}`}>
             <SheetHeader className="space-y-4">
               <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <SheetTitle className="text-3xl font-bold text-zinc-900">
-                    {animal.nombre}
-                  </SheetTitle>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <Badge className="bg-emerald-600 text-white">{animal.arete}</Badge>
-                    <Badge variant="outline" className="bg-white">
-                      {animal.raza}
-                    </Badge>
-                    {animal.potrero && (
-                      <Badge variant="outline" className="bg-white flex items-center gap-1">
-                        <TreePine className="w-3 h-3" />
-                        {animal.potrero}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
+  <div className="flex-1">
+    <SheetTitle className="text-3xl font-bold text-zinc-900">
+      {animal.nombre}
+    </SheetTitle>
+    <div className="flex items-center gap-2 mt-2 flex-wrap">
+      <Badge className="bg-emerald-600 text-white">{animal.arete}</Badge>
+      <Badge variant="outline" className="bg-white">
+        {animal.raza}
+      </Badge>
+      {animal.potrero && (
+        <Badge variant="outline" className="bg-white flex items-center gap-1">
+          <TreePine className="w-3 h-3" />
+          {animal.potrero}
+        </Badge>
+      )}
+    </div>
+  </div>
+  
+  <div className="flex gap-2 ml-4">
+    <Link href={`/animales/${animal.id}`}>
+      <Button size="sm" variant="outline" className="gap-2">
+        <Pencil className="w-4 h-4" />
+        <span className="hidden sm:inline">Editar</span>
+      </Button>
+    </Link>
+    <Button 
+      size="sm" 
+      variant="destructive" 
+      className="gap-2"
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (confirm('¿Estás seguro de eliminar este animal?')) {
+          try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
+              {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+              }
+            );
+            
+            if (response.ok) {
+              onOpenChange(false);
+              window.location.reload();
+            }
+          } catch (error) {
+            console.error('Error al eliminar:', error);
+          }
+        }
+      }}
+    >
+      <Trash2 className="w-4 h-4" />
+      <span className="hidden sm:inline">Eliminar</span>
+    </Button>
+  </div>
+</div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
                 <div className="bg-white rounded-lg p-3 border border-zinc-200">

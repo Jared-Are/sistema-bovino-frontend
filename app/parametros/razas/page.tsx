@@ -76,12 +76,17 @@ export default function RazasPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle>Lista de Razas</CardTitle>
-            <div className="relative w-72">
+            <div className="relative w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-zinc-400" />
+              </span>
               <Input
+                type="text"
                 placeholder="Buscar raza..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                style={{ paddingLeft: '2.5rem' }}
+                className="w-full border border-zinc-300 rounded-md"
               />
             </div>
           </div>
@@ -107,9 +112,9 @@ export default function RazasPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="w-[30%]">Nombre</TableHead>
+                  <TableHead className="w-[50%]">Descripción</TableHead>
+                  <TableHead className="w-[20%] text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,8 +122,8 @@ export default function RazasPage() {
                   <TableRow key={raza.raza_id}>
                     <TableCell className="font-medium">{raza.nombre}</TableCell>
                     <TableCell>{raza.descripcion || '—'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-2">
                         <Link href={`/parametros/razas/${raza.raza_id}`}>
                           <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />

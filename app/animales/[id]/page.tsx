@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
     ArrowLeft, 
     Save, 
@@ -13,7 +14,13 @@ import {
     Upload,
     Image as ImageIcon,
     X,
+    Calendar,
+    Weight,
+    Scale,
     AlertTriangle,
+    MapPin,
+    TreePine,
+    Droplets
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -24,14 +31,16 @@ const animalSchema = z.object({
     arete: z.string().min(3).max(10),
     nombre: z.string().max(40).optional().or(z.literal('')),
     sexo: z.enum(['Macho', 'Hembra']),
-    razaId: z.string().min(1),
+    razaId: z.string().min(1, "Selecciona una raza"),
     loteId: z.string().optional(),
     potreroId: z.string().optional(),
-    fechaNacimiento: z.string().min(1),
-    fechaDestete: z.string().optional(),  
+    fechaNacimiento: z.string().min(1, "Fecha de nacimiento requerida"),
+    fechaDestete: z.string().optional(),
     pesoNacimiento: z.coerce.number().min(20).max(50).optional(),
+    pesoActual: z.coerce.number().min(20).max(800).optional(),
     animalMadreId: z.string().optional(),
     animalPadreId: z.string().optional(),
+    estadoReproductivo: z.string().optional(),
 });
 
 type Raza = { raza_id: number; nombre: string; };
@@ -65,9 +74,12 @@ export default function EditarAnimalPage() {
         loteId: "",
         potreroId: "",
         fechaNacimiento: "",
+        fechaDestete: "",
         pesoNacimiento: "",
+        pesoActual: "",
         animalMadreId: "",
         animalPadreId: "",
+        estadoReproductivo: "Vacía",
     });
 
     useEffect(() => {
@@ -79,17 +91,22 @@ export default function EditarAnimalPage() {
             }
 
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const token = session?.access_token;
-                if (!token) throw new Error("Sesión no válida");
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    router.push('/');
+                    return;
+                }
 
-                const headers = { 'Authorization': `Bearer ${token}` };
+                const headers = { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
 
                 const [animalRes, razasRes, lotesRes, potrerosRes, animalesRes] = await Promise.all([
                     fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales/${id}`, { headers }),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/razas`, { headers }),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/lotes?estado=activo`, { headers }),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/potreros`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/potreros`, { headers }),
                     fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales?limit=100`, { headers })
                 ]);
 
@@ -105,9 +122,12 @@ export default function EditarAnimalPage() {
                     loteId: animal.lote?.lote_id?.toString() || "",
                     potreroId: animal.potrero?.potrero_id?.toString() || "",
                     fechaNacimiento: animal.fecha_nacimiento?.split('T')[0] || "",
+                    fechaDestete: animal.fecha_destete?.split('T')[0] || "",
                     pesoNacimiento: animal.peso_nacimiento?.toString() || "",
+                    pesoActual: animal.peso_actual?.toString() || "",
                     animalMadreId: animal.animal_madre_id?.toString() || "",
                     animalPadreId: animal.animal_padre_id?.toString() || "",
+                    estadoReproductivo: animal.estado_reproductivo || "Vacía",
                 });
 
                 if (animal.imagen) setFotoUrl(animal.imagen);
@@ -118,7 +138,6 @@ export default function EditarAnimalPage() {
                 if (animalesRes.ok) setAnimales(await animalesRes.json());
 
             } catch (err: any) {
-                console.error("Error:", err);
                 setError(err.message);
                 toast({ title: "Error", description: err.message, variant: "destructive" });
             } finally {
@@ -127,7 +146,7 @@ export default function EditarAnimalPage() {
         };
 
         fetchData();
-    }, [id, toast]);
+    }, [id, router, toast]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -136,8 +155,8 @@ export default function EditarAnimalPage() {
             setUploading(true);
             const file = e.target.files[0];
 
-            if (!file.type.startsWith('image/')) throw new Error("Solo se permiten archivos de imagen");
-            if (file.size > 5 * 1024 * 1024) throw new Error("La imagen no puede ser mayor a 5MB");
+            if (!file.type.startsWith('image/')) throw new Error("Solo imágenes");
+            if (file.size > 5 * 1024 * 1024) throw new Error("Máximo 5MB");
 
             const fileExt = file.name.split('.').pop();
             const fileName = `animal_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -152,7 +171,7 @@ export default function EditarAnimalPage() {
             const { data } = supabase.storage.from('ganado').getPublicUrl(filePath);
             setFotoUrl(data.publicUrl);
             
-            toast({ title: "Imagen actualizada", description: "Recuerda guardar los cambios." });
+            toast({ title: "Imagen actualizada" });
 
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -161,9 +180,7 @@ export default function EditarAnimalPage() {
         }
     };
 
-    const handleRemoveImage = () => {
-        setFotoUrl("");
-    };
+    const handleRemoveImage = () => setFotoUrl("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -173,6 +190,7 @@ export default function EditarAnimalPage() {
             const datosParaValidar = {
                 ...formData,
                 pesoNacimiento: formData.pesoNacimiento ? Number(formData.pesoNacimiento) : undefined,
+                pesoActual: formData.pesoActual ? Number(formData.pesoActual) : undefined,
             };
 
             const valid = animalSchema.parse(datosParaValidar);
@@ -182,18 +200,20 @@ export default function EditarAnimalPage() {
                 nombre: valid.nombre || null,
                 sexo: valid.sexo,
                 raza_id: Number(valid.razaId),
-                lote_id: valid.loteId ? Number(valid.loteId) : null,
-                potrero_id: valid.potreroId ? Number(valid.potreroId) : null,
+                lote_id: valid.loteId === "sin-lote" ? null : valid.loteId ? Number(valid.loteId) : null,
+                potrero_id: valid.potreroId === "sin-potrero" ? null : valid.potreroId ? Number(valid.potreroId) : null,
                 fecha_nacimiento: valid.fechaNacimiento,
-                fecha_destete: valid.fechaDestete || null,  
+                fecha_destete: valid.fechaDestete || null,
                 peso_nacimiento: valid.pesoNacimiento || 0,
-                animal_madre_id: valid.animalMadreId ? Number(valid.animalMadreId) : null,
-                animal_padre_id: valid.animalPadreId ? Number(valid.animalPadreId) : null,
+                peso_actual: valid.pesoActual || valid.pesoNacimiento || 0,
+                animal_madre_id: valid.animalMadreId === "sin-madre" ? null : valid.animalMadreId ? Number(valid.animalMadreId) : null,
+                animal_padre_id: valid.animalPadreId === "sin-padre" ? null : valid.animalPadreId ? Number(valid.animalPadreId) : null,
+                estado_reproductivo: valid.estadoReproductivo || "Vacía",
                 imagen: fotoUrl || null,
             };
 
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('No autorizado');
 
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales/${id}`, {
                 method: 'PATCH',
@@ -204,7 +224,10 @@ export default function EditarAnimalPage() {
                 body: JSON.stringify(payload),
             });
 
-            if (!response.ok) throw new Error("Error al actualizar animal");
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || "Error al actualizar");
+            }
 
             toast({ 
                 title: "¡Animal Actualizado!", 
@@ -213,7 +236,6 @@ export default function EditarAnimalPage() {
             });
             
             router.push("/animales");
-            router.refresh();
 
         } catch (err: any) {
             const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
@@ -225,11 +247,8 @@ export default function EditarAnimalPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-zinc-50 p-8">
-                <div className="flex justify-center items-center h-64">
-                    <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-                    <p className="ml-3">Cargando animal...</p>
-                </div>
+            <div className="min-h-screen bg-zinc-50 p-8 flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
             </div>
         );
     }
@@ -250,89 +269,235 @@ export default function EditarAnimalPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50">
-            <div className="p-8">
-                <Link href="/animales">
-                    <Button variant="ghost" size="sm" className="mb-6">
-                        <ArrowLeft className="h-4 w-4 mr-2" /> Volver a la lista
-                    </Button>
-                </Link>
+        <div className="min-h-screen bg-zinc-50 p-8">
+            <Link href="/animales">
+                <Button variant="ghost" size="sm" className="mb-6">
+                    <ArrowLeft className="h-4 w-4 mr-2" /> Volver
+                </Button>
+            </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-2xl">Editar Animal</CardTitle>
-                        <CardDescription>
-                            Modifica los datos del animal.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            
-                            <div className="space-y-2">
-                                <Label>Fotografía del Animal</Label>
-                                <div className="flex items-start gap-6 border p-4 rounded-lg bg-gray-50">
-                                    <div className="relative h-32 w-48 bg-white rounded-md border flex items-center justify-center overflow-hidden shadow-sm shrink-0">
-                                        {uploading ? (
-                                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                                        ) : fotoUrl ? (
-                                            <>
-                                                <img src={fotoUrl} alt="Vista previa" className="h-full w-full object-cover" />
-                                                <button 
-                                                    type="button" 
-                                                    onClick={handleRemoveImage} 
-                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <div className="text-center p-2">
-                                                <ImageIcon className="h-8 w-8 text-gray-300 mx-auto mb-1" />
-                                                <span className="text-xs text-gray-400">Sin imagen</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 space-y-2">
-                                        <Label htmlFor="foto-upload" className="cursor-pointer inline-flex">
-                                            <div className="flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-4 py-2 rounded-md text-sm font-medium">
-                                                <Upload className="h-4 w-4" /> 
-                                                {fotoUrl ? "Cambiar Foto" : "Subir Foto"}
-                                            </div>
-                                            <Input id="foto-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading || saving} />
-                                        </Label>
-                                    </div>
+            <Card className="max-w-4xl mx-auto">
+                <CardHeader>
+                    <CardTitle className="text-2xl">Editar Animal</CardTitle>
+                    <CardDescription>Modifica los datos del animal</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        
+                        {/* Foto */}
+                        <div className="space-y-2">
+                            <Label>Fotografía</Label>
+                            <div className="flex items-start gap-6 border p-4 rounded-lg bg-gray-50">
+                                <div className="relative h-32 w-48 bg-white rounded-md border flex items-center justify-center overflow-hidden shrink-0">
+                                    {uploading ? (
+                                        <Loader2 className="h-8 w-8 animate-spin" />
+                                    ) : fotoUrl ? (
+                                        <>
+                                            <img src={fotoUrl} alt="Vista previa" className="h-full w-full object-cover" />
+                                            <button type="button" onClick={handleRemoveImage} 
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="text-center p-2">
+                                            <ImageIcon className="h-8 w-8 text-gray-300 mx-auto mb-1" />
+                                            <span className="text-xs text-gray-400">Sin imagen</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="foto-upload" className="cursor-pointer">
+                                        <div className="flex items-center gap-2 bg-secondary px-4 py-2 rounded-md">
+                                            <Upload className="h-4 w-4" /> 
+                                            {fotoUrl ? "Cambiar" : "Subir"}
+                                        </div>
+                                    </Label>
+                                    <Input id="foto-upload" type="file" accept="image/*" 
+                                        className="hidden" onChange={handleImageUpload} 
+                                        disabled={uploading || saving} />
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label>Arete *</Label>
-                                    <Input value={formData.arete} onChange={(e) => setFormData({...formData, arete: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Nombre</Label>
-                                    <Input value={formData.nombre} onChange={(e) => {
-                                        if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(e.target.value)) return;
-                                        setFormData({...formData, nombre: e.target.value});
-                                    }} />
+                        {/* Datos básicos */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label>Arete *</Label>
+                                <Input value={formData.arete} 
+                                    onChange={(e) => setFormData({...formData, arete: e.target.value.toUpperCase()})} />
+                            </div>
+                            <div>
+                                <Label>Nombre</Label>
+                                <Input value={formData.nombre} 
+                                    onChange={(e) => /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(e.target.value) && 
+                                        setFormData({...formData, nombre: e.target.value})} />
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label>Sexo *</Label>
+                                <Select value={formData.sexo} 
+                                    onValueChange={(v: "Macho" | "Hembra") => setFormData({...formData, sexo: v})}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Hembra">Hembra</SelectItem>
+                                        <SelectItem value="Macho">Macho</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Raza *</Label>
+                                <Select value={formData.razaId} onValueChange={(v) => setFormData({...formData, razaId: v})}>
+                                    <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                    <SelectContent>
+                                        {razas.map((r) => (
+                                            <SelectItem key={r.raza_id} value={r.raza_id.toString()}>{r.nombre}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label>Lote</Label>
+                                <Select value={formData.loteId} onValueChange={(v) => setFormData({...formData, loteId: v})}>
+                                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="sin-lote">Sin lote</SelectItem>
+                                        {lotes.map((l) => (
+                                            <SelectItem key={l.lote_id} value={l.lote_id.toString()}>{l.nombre}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Potrero</Label>
+                                <Select value={formData.potreroId} onValueChange={(v) => setFormData({...formData, potreroId: v})}>
+                                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="sin-potrero">Sin potrero</SelectItem>
+                                        {potreros.map((p) => (
+                                            <SelectItem key={p.potrero_id} value={p.potrero_id.toString()}>{p.nombre}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label>Fecha Nacimiento *</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input type="date" className="pl-8" value={formData.fechaNacimiento}
+                                        onChange={(e) => setFormData({...formData, fechaNacimiento: e.target.value})} />
                                 </div>
                             </div>
-
-                            <div className="flex gap-3 pt-4">
-                                <Button type="submit" disabled={saving || uploading} className="bg-emerald-600 hover:bg-emerald-700">
-                                    {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                    {saving ? "Guardando..." : "Guardar Cambios"}
-                                </Button>
-                                <Link href="/animales">
-                                    <Button type="button" variant="outline" disabled={saving}>
-                                        Cancelar
-                                    </Button>
-                                </Link>
+                            <div>
+                                <Label>Fecha Destete</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input type="date" className="pl-8" value={formData.fechaDestete}
+                                        onChange={(e) => setFormData({...formData, fechaDestete: e.target.value})} />
+                                </div>
                             </div>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label>Peso al Nacer (kg)</Label>
+                                <div className="relative">
+                                    <Weight className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input type="number" step="0.1" min="20" max="50" className="pl-8"
+                                        value={formData.pesoNacimiento}
+                                        onChange={(e) => setFormData({...formData, pesoNacimiento: e.target.value})} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Peso Actual (kg)</Label>
+                                <div className="relative">
+                                    <Scale className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input type="number" step="0.1" min="20" max="800" className="pl-8"
+                                        value={formData.pesoActual}
+                                        onChange={(e) => setFormData({...formData, pesoActual: e.target.value})} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Estado Reproductivo */}
+                        <div className="grid md:grid-cols-1 gap-4">
+                            <div>
+                                <Label>Estado Reproductivo</Label>
+                                <Select value={formData.estadoReproductivo} 
+                                    onValueChange={(v) => setFormData({...formData, estadoReproductivo: v})}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Vacía">Vacía</SelectItem>
+                                        <SelectItem value="Gestación">Gestación</SelectItem>
+                                        <SelectItem value="Lactancia">Lactancia</SelectItem>
+                                        <SelectItem value="Seca">Seca</SelectItem>
+                                        <SelectItem value="Preparto">Preparto</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Padres */}
+                        <div className="border-t pt-4">
+                            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                                <Droplets className="w-4 h-4" /> Genealogía
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Madre</Label>
+                                    <Select value={formData.animalMadreId} 
+                                        onValueChange={(v) => setFormData({...formData, animalMadreId: v})}>
+                                        <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sin-madre">Sin madre</SelectItem>
+                                            {animales.filter(a => a.animal_id !== Number(formData.animalPadreId))
+                                                .map((a) => (
+                                                    <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
+                                                        {a.arete} - {a.nombre || 'Sin nombre'}
+                                                    </SelectItem>
+                                                ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>Padre</Label>
+                                    <Select value={formData.animalPadreId} 
+                                        onValueChange={(v) => setFormData({...formData, animalPadreId: v})}>
+                                        <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sin-padre">Sin padre</SelectItem>
+                                            {animales.filter(a => a.animal_id !== Number(formData.animalMadreId))
+                                                .map((a) => (
+                                                    <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
+                                                        {a.arete} - {a.nombre || 'Sin nombre'}
+                                                    </SelectItem>
+                                                ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <Button type="submit" disabled={saving || uploading} className="bg-emerald-600">
+                                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                                {saving ? "Guardando..." : "Guardar Cambios"}
+                            </Button>
+                            <Link href="/animales">
+                                <Button type="button" variant="outline">Cancelar</Button>
+                            </Link>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
 }
