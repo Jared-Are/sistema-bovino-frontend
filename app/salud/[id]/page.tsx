@@ -4,27 +4,21 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { 
     ArrowLeft, 
     Save, 
     Loader2,
-    Calendar,
     Stethoscope,
-    AlertTriangle
+    AlertTriangle,
+    Lock
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const tratamientoSchema = z.object({
-    tipoId: z.string().min(1, "Selecciona el tipo de tratamiento"),
-    animalId: z.string().min(1, "Selecciona el animal"),
-    fecha: z.string().min(1, "La fecha es requerida"),
-    descripcion: z.string().optional(),
+const estadoSchema = z.object({
     estado: z.string().min(1, "Selecciona el estado")
 });
 
@@ -40,6 +34,7 @@ export default function EditarTratamientoPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     
     const [animales, setAnimales] = useState<AnimalSimple[]>([]);
     const [tipos, setTipos] = useState<TipoSimple[]>([]);
@@ -113,17 +108,15 @@ export default function EditarTratamientoPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFieldErrors({});
         setSaving(true);
 
         try {
-            const valid = tratamientoSchema.parse(formData);
+            // Validar solo el estado
+            estadoSchema.parse({ estado: formData.estado });
 
             const payload = {
-                tipo_tratamiento_id: Number(valid.tipoId),
-                animal_id: Number(valid.animalId),
-                fecha: valid.fecha,
-                descripcion: valid.descripcion || null,
-                estado: valid.estado
+                estado: formData.estado
             };
 
             const token = localStorage.getItem('token');
@@ -144,16 +137,23 @@ export default function EditarTratamientoPage() {
             }
 
             toast({ 
-                title: "¡Tratamiento Actualizado!", 
-                description: "Los cambios se guardaron correctamente.",
+                title: "¡Estado Actualizado!", 
+                description: "El estado del tratamiento se actualizó correctamente.",
                 className: "bg-green-600 text-white"
             });
             
             router.push("/salud");
 
         } catch (err: any) {
-            const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
-            toast({ title: "Error", description: mensaje, variant: "destructive" });
+            if (err instanceof z.ZodError) {
+                const errors: Record<string, string> = {};
+                err.errors.forEach(e => {
+                    if (e.path[0]) errors[e.path[0].toString()] = e.message;
+                });
+                setFieldErrors(errors);
+            } else {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
         } finally {
             setSaving(false);
         }
@@ -182,6 +182,10 @@ export default function EditarTratamientoPage() {
         );
     }
 
+    // Obtener nombres para mostrar
+    const animalNombre = animales.find(a => a.animal_id.toString() === formData.animalId)?.arete || 'Animal';
+    const tipoNombre = tipos.find(t => t.id.toString() === formData.tipoId)?.nombre || 'Tratamiento';
+
     return (
         <div className="min-h-screen bg-zinc-50 p-8">
             <Link href="/salud">
@@ -196,90 +200,75 @@ export default function EditarTratamientoPage() {
                         <Stethoscope className="h-6 w-6 text-emerald-600" />
                         <CardTitle>Editar Tratamiento</CardTitle>
                     </div>
-                    <CardDescription>Modifica los datos del tratamiento sanitario</CardDescription>
+                    <CardDescription>Solo puedes modificar el estado del tratamiento</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Tipo de Tratamiento *</Label>
-                                <Select value={formData.tipoId} onValueChange={(v) => setFormData({...formData, tipoId: v})}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona el tipo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {tipos.map((t) => (
-                                            <SelectItem key={t.id} value={t.id.toString()}>
-                                                {t.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Animal *</Label>
-                                <Select value={formData.animalId} onValueChange={(v) => setFormData({...formData, animalId: v})}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona el animal" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {animales.map((a) => (
-                                            <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                {a.arete} - {a.nombre || 'Sin nombre'}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Fecha *</Label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input 
-                                        type="date" 
-                                        className="pl-8" 
-                                        value={formData.fecha}
-                                        onChange={(e) => setFormData({...formData, fecha: e.target.value})}
-                                        required 
-                                    />
+                        {/* Datos no editables - solo lectura */}
+                        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-gray-600">Animal</Label>
+                                    <div className="p-2 border border-gray-200 rounded-md bg-white flex items-center gap-2">
+                                        <Lock className="h-4 w-4 text-gray-400" />
+                                        <span>{animalNombre}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label className="text-gray-600">Tipo de Tratamiento</Label>
+                                    <div className="p-2 border border-gray-200 rounded-md bg-white flex items-center gap-2">
+                                        <Lock className="h-4 w-4 text-gray-400" />
+                                        <span>{tipoNombre}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Estado *</Label>
-                                <Select value={formData.estado} onValueChange={(v) => setFormData({...formData, estado: v})}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona el estado" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                                        <SelectItem value="ACTIVO">Activo</SelectItem>
-                                        <SelectItem value="COMPLETADO">Completado</SelectItem>
-                                        <SelectItem value="CANCELADO">Cancelado</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-gray-600">Fecha</Label>
+                                    <div className="p-2 border border-gray-200 rounded-md bg-white flex items-center gap-2">
+                                        <Lock className="h-4 w-4 text-gray-400" />
+                                        <span>{new Date(formData.fecha).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label className="text-gray-600">Descripción</Label>
+                                    <div className="p-2 border border-gray-200 rounded-md bg-white min-h-[40px]">
+                                        {formData.descripcion || 'Sin descripción'}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
+                        {/* Único campo editable: Estado */}
                         <div className="space-y-2">
-                            <Label>Descripción / Observaciones</Label>
-                            <Textarea
-                                placeholder="Detalles adicionales del tratamiento..."
-                                value={formData.descripcion}
-                                onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                                rows={4}
-                            />
+                            <Label htmlFor="estado" className="flex items-center gap-1">
+                                Estado del Tratamiento <span className="text-red-500">*</span>
+                            </Label>
+                            <Select 
+                                value={formData.estado} 
+                                onValueChange={(v) => setFormData({...formData, estado: v})}
+                            >
+                                <SelectTrigger className={fieldErrors.estado ? "border-red-500 focus-visible:ring-red-500" : ""}>
+                                    <SelectValue placeholder="Selecciona el estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                                    <SelectItem value="ACTIVO">Activo</SelectItem>
+                                    <SelectItem value="COMPLETADO">Completado</SelectItem>
+                                    <SelectItem value="CANCELADO">Cancelado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {fieldErrors.estado && (
+                                <p className="text-sm text-red-500 mt-1">{fieldErrors.estado}</p>
+                            )}
                         </div>
 
                         <div className="flex gap-3 pt-4 border-t">
                             <Button type="submit" disabled={saving} className="bg-emerald-600">
                                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                {saving ? "Guardando..." : "Guardar Cambios"}
+                                {saving ? "Guardando..." : "Actualizar Estado"}
                             </Button>
                             <Link href="/salud">
                                 <Button type="button" variant="outline">Cancelar</Button>

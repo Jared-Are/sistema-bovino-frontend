@@ -10,8 +10,15 @@ import { AnimalCards } from './animal-cards';
 import Link from 'next/link';
 
 type SexoAnimal = 'Macho' | 'Hembra';
-type EstadoReproductivo = 'vacia' | 'gestacion' | 'lactancia' | 'seco' | 'preparto';
+type EstadoReproductivo = 'vacia' | 'gestante' | 'lactando' | 'seca' | 'en celo' | 'inseminada' | 'parida';
 
+/*VACIA = 'Vacía',
+  GESTANTE = 'Gestante',
+  LACTANDO = 'Lactando',
+  SECA = 'Seca',
+  EN_CELO = 'En celo',
+  INSEMINADA = 'Inseminada',
+  PARIDA = 'Parida', */
 interface AnimalBackend {
   animal_id: number;
   arete: string;
@@ -71,12 +78,12 @@ const calcularEdadEnAños = (fechaNacimiento: string): number => {
 const mapEstadoReproductivo = (estadoBackend: string): EstadoReproductivo => {
   const mapa: Record<string, EstadoReproductivo> = {
     'Vacía': 'vacia',
-    'Gestante': 'gestacion',     
-    'Lactando': 'lactancia',       
-    'Seca': 'seco',
-    'En celo': 'vacia',           
-    'Inseminada': 'gestacion',    
-    'Parida': 'lactancia',
+    'Gestante': 'gestante',     
+    'Lactando': 'lactando',       
+    'Seca': 'seca',
+    'En celo': 'en celo',           
+    'Inseminada': 'inseminada',    
+    'Parida': 'parida',
   };
   
   return mapa[estadoBackend] || 'vacia';

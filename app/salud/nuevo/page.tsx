@@ -13,16 +13,25 @@ import {
     Save, 
     Loader2,
     Calendar,
-    Stethoscope
+    Stethoscope,
+    AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+const hoy = new Date();
+const año = hoy.getFullYear();
+const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+const dia = String(hoy.getDate()).padStart(2, '0');
+const fechaHoy = `${año}-${mes}-${dia}`;
+
 const tratamientoSchema = z.object({
     tipoId: z.string().min(1, "Selecciona el tipo de tratamiento"),
     animalId: z.string().min(1, "Selecciona el animal"),
-    fecha: z.string().min(1, "La fecha es requerida"),
+    fecha: z.string()
+        .min(1, "La fecha es requerida")
+        .refine(val => val >= fechaHoy, "La fecha no puede ser anterior a hoy"),
     descripcion: z.string().optional(),
     estado: z.string().default("PENDIENTE")
 });
@@ -36,6 +45,7 @@ export default function NuevoTratamientoPage() {
     
     const [loading, setLoading] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     
     const [animales, setAnimales] = useState<AnimalSimple[]>([]);
     const [tipos, setTipos] = useState<TipoSimple[]>([]);
@@ -43,7 +53,7 @@ export default function NuevoTratamientoPage() {
     const [formData, setFormData] = useState({
         tipoId: "",
         animalId: "",
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: fechaHoy,
         descripcion: "",
         estado: "PENDIENTE"
     });
@@ -86,8 +96,24 @@ export default function NuevoTratamientoPage() {
         fetchData();
     }, [router, toast]);
 
+    const validateField = (field: keyof typeof formData, value: any) => {
+        try {
+            const fieldSchema = z.object({ [field]: tratamientoSchema.shape[field] });
+            fieldSchema.parse({ [field]: value });
+            setFieldErrors(prev => ({ ...prev, [field]: "" }));
+            return true;
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                const message = error.errors[0]?.message || "Campo inválido";
+                setFieldErrors(prev => ({ ...prev, [field]: message }));
+            }
+            return false;
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFieldErrors({});
         setLoading(true);
 
         try {
@@ -127,8 +153,15 @@ export default function NuevoTratamientoPage() {
             router.push("/salud");
 
         } catch (err: any) {
-            const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
-            toast({ title: "Error", description: mensaje, variant: "destructive" });
+            if (err instanceof z.ZodError) {
+                const errors: Record<string, string> = {};
+                err.errors.forEach(e => {
+                    if (e.path[0]) errors[e.path[0].toString()] = e.message;
+                });
+                setFieldErrors(errors);
+            } else {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
         } finally {
             setLoading(false);
         }
@@ -163,21 +196,47 @@ export default function NuevoTratamientoPage() {
                         
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Tipo de Tratamiento *</Label>
-                                <Select value={formData.tipoId} onValueChange={(v) => setFormData({...formData, tipoId: v})}>
-                                    <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                <Label className="flex items-center gap-1">
+                                    Tipo de Tratamiento <span className="text-red-500">*</span>
+                                </Label>
+                                <Select 
+                                    value={formData.tipoId} 
+                                    onValueChange={(v) => {
+                                        setFormData({...formData, tipoId: v});
+                                        validateField('tipoId', v);
+                                    }}
+                                >
+                                    <SelectTrigger className={fieldErrors.tipoId ? "border-red-500 focus-visible:ring-red-500" : ""}>
+                                        <SelectValue placeholder="Selecciona" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {tipos.map((t) => (
                                             <SelectItem key={t.id} value={t.id.toString()}>{t.nombre}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {fieldErrors.tipoId && (
+                                    <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {fieldErrors.tipoId}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Animal *</Label>
-                                <Select value={formData.animalId} onValueChange={(v) => setFormData({...formData, animalId: v})}>
-                                    <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                <Label className="flex items-center gap-1">
+                                    Animal <span className="text-red-500">*</span>
+                                </Label>
+                                <Select 
+                                    value={formData.animalId} 
+                                    onValueChange={(v) => {
+                                        setFormData({...formData, animalId: v});
+                                        validateField('animalId', v);
+                                    }}
+                                >
+                                    <SelectTrigger className={fieldErrors.animalId ? "border-red-500 focus-visible:ring-red-500" : ""}>
+                                        <SelectValue placeholder="Selecciona" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {animales.map((a) => (
                                             <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
@@ -186,19 +245,41 @@ export default function NuevoTratamientoPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {fieldErrors.animalId && (
+                                    <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {fieldErrors.animalId}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Fecha *</Label>
+                                <Label className="flex items-center gap-1">
+                                    Fecha <span className="text-red-500">*</span>
+                                </Label>
                                 <div className="relative">
                                     <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input type="date" className="pl-8" 
+                                    <Input 
+                                        type="date" 
+                                        className={`pl-8 ${fieldErrors.fecha ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                                         value={formData.fecha}
-                                        onChange={(e) => setFormData({...formData, fecha: e.target.value})}
-                                        required />
+                                        min={fechaHoy} 
+                                        onChange={(e) => {
+                                            setFormData({...formData, fecha: e.target.value});
+                                            validateField('fecha', e.target.value);
+                                        }}
+                                        required 
+                                    />
                                 </div>
+                                {fieldErrors.fecha && (
+                                    <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {fieldErrors.fecha}
+                                    </p>
+                                )}
+                                <p className="text-xs text-zinc-500">Solo se permiten fechas desde hoy</p>
                             </div>
 
                             <div className="space-y-2">

@@ -58,7 +58,6 @@ interface Animal {
   madre?: string;
   montas: any[];
   tratamientos: any[];
-  vacunas: any[];
   pesajes: any[];
   produccionDiaria?: number;
 }

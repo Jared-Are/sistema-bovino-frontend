@@ -15,27 +15,30 @@ import {
     Image as ImageIcon,
     X,
     Calendar,
-    Weight,
     Scale,
     AlertTriangle,
-    Droplets
+    Droplets,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase"; 
 import { z } from "zod";
 
-const animalSchema = z.object({
-    arete: z.string().min(3).max(10),
+const hoy = new Date();
+const año = hoy.getFullYear();
+const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+const dia = String(hoy.getDate()).padStart(2, '0');
+const fechaHoy = `${año}-${mes}-${dia}`;
+
+const updateAnimalSchema = z.object({
     nombre: z.string().max(40).optional().or(z.literal('')),
-    sexo: z.enum(['Macho', 'Hembra']),
-    razaId: z.string().min(1, "Selecciona una raza"),
     loteId: z.string().optional(),
     potreroId: z.string().optional(),
-    fechaNacimiento: z.string().min(1, "Fecha de nacimiento requerida"),
     fechaDestete: z.string().optional(),
-    pesoNacimiento: z.coerce.number().min(20).max(50).optional(),
-    pesoActual: z.coerce.number().min(20).max(800).optional(),
+    pesoActual: z.coerce.number()
+        .min(20, "El peso mínimo es 20 kg")
+        .max(800, "El peso máximo es 800 kg")
+        .optional(),
     animalMadreId: z.string().optional(),
     animalPadreId: z.string().optional(),
     estadoReproductivo: z.string().optional(),
@@ -44,7 +47,7 @@ const animalSchema = z.object({
 type Raza = { raza_id: number; nombre: string; };
 type Lote = { lote_id: number; nombre: string; };
 type Potrero = { potrero_id: number; nombre: string; };
-type AnimalSimple = { animal_id: number; arete: string; nombre: string; };
+type AnimalSimple = { animal_id: number; arete: string; nombre: string; sexo: string; };
 
 export default function EditarAnimalPage() {
     const router = useRouter();
@@ -56,6 +59,7 @@ export default function EditarAnimalPage() {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     
     const [fotoUrl, setFotoUrl] = useState("");
     
@@ -182,33 +186,45 @@ export default function EditarAnimalPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFieldErrors({});
         setSaving(true);
 
         try {
             const datosParaValidar = {
-                ...formData,
-                pesoNacimiento: formData.pesoNacimiento ? Number(formData.pesoNacimiento) : undefined,
+                nombre: formData.nombre,
+                loteId: formData.loteId,
+                potreroId: formData.potreroId,
+                fechaDestete: formData.fechaDestete,
                 pesoActual: formData.pesoActual ? Number(formData.pesoActual) : undefined,
+                animalMadreId: formData.animalMadreId,
+                animalPadreId: formData.animalPadreId,
+                estadoReproductivo: formData.estadoReproductivo,
             };
 
-            const valid = animalSchema.parse(datosParaValidar);
+            // Validar solo si hay algún cambio (opcional)
+            if (Object.values(datosParaValidar).some(val => val !== undefined && val !== '')) {
+                updateAnimalSchema.parse(datosParaValidar);
+            }
 
-            const payload = {
-                arete: valid.arete.toUpperCase(),
-                nombre: valid.nombre || null,
-                sexo: valid.sexo,
-                raza_id: Number(valid.razaId),
-                lote_id: valid.loteId === "sin-lote" ? null : valid.loteId ? Number(valid.loteId) : null,
-                potrero_id: valid.potreroId === "sin-potrero" ? null : valid.potreroId ? Number(valid.potreroId) : null,
-                fecha_nacimiento: valid.fechaNacimiento,
-                fecha_destete: valid.fechaDestete || null,
-                peso_nacimiento: valid.pesoNacimiento || 0,
-                peso_actual: valid.pesoActual || valid.pesoNacimiento || 0,
-                animal_madre_id: valid.animalMadreId === "sin-madre" ? null : valid.animalMadreId ? Number(valid.animalMadreId) : null,
-                animal_padre_id: valid.animalPadreId === "sin-padre" ? null : valid.animalPadreId ? Number(valid.animalPadreId) : null,
-                estado_reproductivo: valid.estadoReproductivo || "Vacía",
-                imagen: fotoUrl || null,
-            };
+            // Construir payload solo con campos que cambiaron
+            const payload: any = {};
+
+            if (formData.nombre !== undefined) payload.nombre = formData.nombre || null;
+            if (formData.pesoActual) payload.peso_actual = Number(formData.pesoActual);
+            if (formData.fechaDestete) payload.fecha_destete = formData.fechaDestete;
+            if (formData.loteId) payload.lote_id = formData.loteId === "sin-lote" ? null : Number(formData.loteId);
+            if (formData.potreroId) payload.potrero_id = formData.potreroId === "sin-potrero" ? null : Number(formData.potreroId);
+            if (formData.animalMadreId) payload.animal_madre_id = formData.animalMadreId === "sin-madre" ? null : Number(formData.animalMadreId);
+            if (formData.animalPadreId) payload.animal_padre_id = formData.animalPadreId === "sin-padre" ? null : Number(formData.animalPadreId);
+            if (formData.estadoReproductivo) payload.estado_reproductivo = formData.estadoReproductivo;
+            if (fotoUrl !== undefined) payload.imagen = fotoUrl || null;
+
+            // Si no hay cambios, mostrar mensaje
+            if (Object.keys(payload).length === 0) {
+                toast({ title: "Sin cambios", description: "No hay cambios para guardar" });
+                setSaving(false);
+                return;
+            }
 
             const token = localStorage.getItem('token');
             if (!token) throw new Error('No autorizado');
@@ -236,8 +252,15 @@ export default function EditarAnimalPage() {
             router.push("/animales");
 
         } catch (err: any) {
-            const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
-            toast({ title: "Error", description: mensaje, variant: "destructive" });
+            if (err instanceof z.ZodError) {
+                const errors: Record<string, string> = {};
+                err.errors.forEach(e => {
+                    if (e.path[0]) errors[e.path[0].toString()] = e.message;
+                });
+                setFieldErrors(errors);
+            } else {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
         } finally {
             setSaving(false);
         }
@@ -318,170 +341,195 @@ export default function EditarAnimalPage() {
                             </div>
                         </div>
 
-                        {/* Datos básicos */}
-                        <div className="grid md:grid-cols-2 gap-4">
+                        {/* Datos no editables (solo lectura) */}
+                        <div className="grid md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                             <div>
-                                <Label>Arete *</Label>
-                                <Input value={formData.arete} 
-                                    onChange={(e) => setFormData({...formData, arete: e.target.value.toUpperCase()})} />
-                            </div>
-                            <div>
-                                <Label>Nombre</Label>
-                                <Input value={formData.nombre} 
-                                    onChange={(e) => /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(e.target.value) && 
-                                        setFormData({...formData, nombre: e.target.value})} />
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label>Sexo *</Label>
-                                <Select value={formData.sexo} 
-                                    onValueChange={(v: "Macho" | "Hembra") => setFormData({...formData, sexo: v})}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Hembra">Hembra</SelectItem>
-                                        <SelectItem value="Macho">Macho</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label>Raza *</Label>
-                                <Select value={formData.razaId} onValueChange={(v) => setFormData({...formData, razaId: v})}>
-                                    <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
-                                    <SelectContent>
-                                        {razas.map((r) => (
-                                            <SelectItem key={r.raza_id} value={r.raza_id.toString()}>{r.nombre}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label>Lote</Label>
-                                <Select value={formData.loteId} onValueChange={(v) => setFormData({...formData, loteId: v})}>
-                                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="sin-lote">Sin lote</SelectItem>
-                                        {lotes.map((l) => (
-                                            <SelectItem key={l.lote_id} value={l.lote_id.toString()}>{l.nombre}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label>Potrero</Label>
-                                <Select value={formData.potreroId} onValueChange={(v) => setFormData({...formData, potreroId: v})}>
-                                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="sin-potrero">Sin potrero</SelectItem>
-                                        {potreros.map((p) => (
-                                            <SelectItem key={p.potrero_id} value={p.potrero_id.toString()}>{p.nombre}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label>Fecha Nacimiento *</Label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input type="date" className="pl-8" value={formData.fechaNacimiento}
-                                        onChange={(e) => setFormData({...formData, fechaNacimiento: e.target.value})} />
+                                <Label className="text-gray-600">Arete</Label>
+                                <div className="p-2 border border-gray-200 rounded-md bg-white">
+                                    {formData.arete}
                                 </div>
                             </div>
                             <div>
-                                <Label>Fecha Destete</Label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input type="date" className="pl-8" value={formData.fechaDestete}
-                                        onChange={(e) => setFormData({...formData, fechaDestete: e.target.value})} />
+                                <Label className="text-gray-600">Sexo</Label>
+                                <div className="p-2 border border-gray-200 rounded-md bg-white">
+                                    {formData.sexo}
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-gray-600">Raza</Label>
+                                <div className="p-2 border border-gray-200 rounded-md bg-white">
+                                    {razas.find(r => r.raza_id.toString() === formData.razaId)?.nombre || 'No especificada'}
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-gray-600">Fecha Nacimiento</Label>
+                                <div className="p-2 border border-gray-200 rounded-md bg-white">
+                                    {new Date(formData.fechaNacimiento).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-gray-600">Peso al Nacer</Label>
+                                <div className="p-2 border border-gray-200 rounded-md bg-white">
+                                    {formData.pesoNacimiento} kg
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label>Peso al Nacer (kg)</Label>
-                                <div className="relative">
-                                    <Weight className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input type="number" step="0.1" min="20" max="50" className="pl-8"
-                                        value={formData.pesoNacimiento}
-                                        onChange={(e) => setFormData({...formData, pesoNacimiento: e.target.value})} />
-                                </div>
-                            </div>
-                            <div>
-                                <Label>Peso Actual (kg)</Label>
-                                <div className="relative">
-                                    <Scale className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input type="number" step="0.1" min="20" max="800" className="pl-8"
-                                        value={formData.pesoActual}
-                                        onChange={(e) => setFormData({...formData, pesoActual: e.target.value})} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Estado Reproductivo */}
-                        <div className="grid md:grid-cols-1 gap-4">
-                            <div>
-                                <Label>Estado Reproductivo</Label>
-                                <Select value={formData.estadoReproductivo} 
-                                    onValueChange={(v) => setFormData({...formData, estadoReproductivo: v})}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Vacía">Vacía</SelectItem>
-                                        <SelectItem value="Gestante">Gestante</SelectItem>
-                                        <SelectItem value="Lactando">Lactando</SelectItem>
-                                        <SelectItem value="Seca">Seca</SelectItem>
-                                        <SelectItem value="En celo">En celo</SelectItem>
-                                        <SelectItem value="Inseminada">Inseminada</SelectItem>
-                                        <SelectItem value="Parida">Parida</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Padres */}
-                        <div className="border-t pt-4">
-                            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                <Droplets className="w-4 h-4" /> Genealogía
-                            </h3>
+                        {/* Campos editables */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-semibold text-zinc-900">Campos Editables</h3>
+                            
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Madre</Label>
-                                    <Select value={formData.animalMadreId} 
-                                        onValueChange={(v) => setFormData({...formData, animalMadreId: v})}>
-                                        <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                    <Label>Nombre</Label>
+                                    <Input 
+                                        value={formData.nombre} 
+                                        onChange={(e) => {
+                                            if (/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(e.target.value) || e.target.value === '') {
+                                                setFormData({...formData, nombre: e.target.value});
+                                            }
+                                        }}
+                                        placeholder="Nombre del animal"
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Lote</Label>
+                                    <Select 
+                                        value={formData.loteId} 
+                                        onValueChange={(v) => setFormData({...formData, loteId: v})}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecciona lote" />
+                                        </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="sin-madre">Sin madre</SelectItem>
-                                            {animales.filter(a => a.animal_id !== Number(formData.animalPadreId))
-                                                .map((a) => (
-                                                    <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                        {a.arete} - {a.nombre || 'Sin nombre'}
-                                                    </SelectItem>
-                                                ))}
+                                            <SelectItem value="sin-lote">Sin lote</SelectItem>
+                                            {lotes.map((l) => (
+                                                <SelectItem key={l.lote_id} value={l.lote_id.toString()}>{l.nombre}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Potrero</Label>
+                                    <Select 
+                                        value={formData.potreroId} 
+                                        onValueChange={(v) => setFormData({...formData, potreroId: v})}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecciona potrero" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sin-potrero">Sin potrero</SelectItem>
+                                            {potreros.map((p) => (
+                                                <SelectItem key={p.potrero_id} value={p.potrero_id.toString()}>{p.nombre}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
-                                    <Label>Padre</Label>
-                                    <Select value={formData.animalPadreId} 
-                                        onValueChange={(v) => setFormData({...formData, animalPadreId: v})}>
-                                        <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                                    <Label>Fecha Destete</Label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input 
+                                            type="date" 
+                                            className="pl-8"
+                                            value={formData.fechaDestete}
+                                            max={fechaHoy}
+                                            onChange={(e) => setFormData({...formData, fechaDestete: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Peso Actual (kg)</Label>
+                                    <div className="relative">
+                                        <Scale className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input 
+                                            type="number" 
+                                            step="0.1" 
+                                            min="20" 
+                                            max="800" 
+                                            className="pl-8"
+                                            value={formData.pesoActual}
+                                            onChange={(e) => setFormData({...formData, pesoActual: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label>Estado Reproductivo</Label>
+                                    <Select 
+                                        value={formData.estadoReproductivo} 
+                                        onValueChange={(v) => setFormData({...formData, estadoReproductivo: v})}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="sin-padre">Sin padre</SelectItem>
-                                            {animales.filter(a => a.animal_id !== Number(formData.animalMadreId))
-                                                .map((a) => (
-                                                    <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                        {a.arete} - {a.nombre || 'Sin nombre'}
-                                                    </SelectItem>
-                                                ))}
+                                            <SelectItem value="Vacía">Vacía</SelectItem>
+                                            <SelectItem value="Gestante">Gestante</SelectItem>
+                                            <SelectItem value="Lactando">Lactando</SelectItem>
+                                            <SelectItem value="Seca">Seca</SelectItem>
+                                            <SelectItem value="En celo">En celo</SelectItem>
+                                            <SelectItem value="Inseminada">Inseminada</SelectItem>
+                                            <SelectItem value="Parida">Parida</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                </div>
+                            </div>
+
+                            {/* Padres */}
+                            <div className="border-t pt-4">
+                                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                                    <Droplets className="w-4 h-4" /> Genealogía
+                                </h3>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Madre</Label>
+                                        <Select 
+                                            value={formData.animalMadreId} 
+                                            onValueChange={(v) => setFormData({...formData, animalMadreId: v})}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecciona la madre" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="sin-madre">Sin madre</SelectItem>
+                                                {animales
+                                                    .filter(a => a.sexo?.toLowerCase() === 'hembra')
+                                                    .map((a) => (
+                                                        <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
+                                                            {a.arete} - {a.nombre || 'Sin nombre'}
+                                                        </SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>Padre</Label>
+                                        <Select 
+                                            value={formData.animalPadreId} 
+                                            onValueChange={(v) => setFormData({...formData, animalPadreId: v})}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecciona el padre" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="sin-padre">Sin padre</SelectItem>
+                                                {animales
+                                                    .filter(a => a.sexo?.toLowerCase() === 'macho')
+                                                    .map((a) => (
+                                                        <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
+                                                            {a.arete} - {a.nombre || 'Sin nombre'}
+                                                        </SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
