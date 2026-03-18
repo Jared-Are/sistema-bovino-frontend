@@ -1,53 +1,73 @@
 "use client";
 
+import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+// Importación de componentes modulares
 import { ReproduccionDetailsSheet } from "./reproduccion-details-sheet";
 import { ReproduccionCards } from "./reproduccion-cards";
 import { ReproduccionFilters } from "./reproduccion-filters";
-import { useState, useMemo, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+
+// Importación de lógica centralizada (Mejoras de Alex)
+import { reproduccionApi } from "@/lib/api/reproduccion";
+import type { RegistroReproduccion, ReproduccionBackend } from "@/lib/types/reproduccion";
+
+// UI e Iconos
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type ReproduccionData = {
-  id: number;
-  numero_monta: string;
-  fecha_programacion: string;
-  tipo_monta: string;
-  estado: string;
-  hembra: { arete: string; nombre: string };
-};
+/**
+ * Función de Mapeo: Convierte los datos crudos del Backend (snake_case)
+ * al formato amigable del Frontend (camelCase).
+ */
+const mapBackendToFrontend = (item: ReproduccionBackend): RegistroReproduccion => ({
+  id: item.id,
+  numeroMonta: item.numero_monta,
+  fecha: item.fecha_programacion,
+  tipoMonta: item.tipo_monta,
+  estado: item.estado as any,
+  animalId: item.hembra?.animal_id.toString() || "0",
+  arete: item.hembra?.arete || "Sin arete",
+  nombreAnimal: item.hembra?.nombre || "Sin nombre",
+});
 
 export function ReproduccionSection() {
   const router = useRouter();
-  const [registros, setRegistros] = useState<ReproduccionData[]>([]);
-  const [cargando, setCargando] = useState(true);
-  
-  // Estado para los filtros nuevos
-  const [filters, setFilters] = useState({ estados: [] as string[], search: "" });
-  
-  const [selectedRegistro, setSelectedRegistro] = useState<ReproduccionData | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { toast } = useToast();
+  
+  // --- ESTADOS ---
+  const [registros, setRegistros] = useState<RegistroReproduccion[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [filters, setFilters] = useState({ estados: [] as string[], search: "" });
+  const [selectedRegistro, setSelectedRegistro] = useState<RegistroReproduccion | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  // --- LÓGICA DE CARGA ---
   const cargarRegistros = async () => {
     try {
       setCargando(true);
       const token = localStorage.getItem("token");
+      
       if (!token) {
         router.push("/login");
         return;
       }
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/reproduccion/montas`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error("Error al cargar");
-      const data = await response.json();
-      setRegistros(data);
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudieron cargar los registros", variant: "destructive" });
+
+      // Uso de la API centralizada
+      const data: ReproduccionBackend[] = await reproduccionApi.getMontas(token);
+      
+      // Aplicamos el mapeo para tener datos limpios
+      const datosMapeados = data.map(mapBackendToFrontend);
+      setRegistros(datosMapeados);
+      
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.message || "No se pudieron cargar los registros", 
+        variant: "destructive" 
+      });
     } finally {
       setCargando(false);
     }
@@ -55,17 +75,17 @@ export function ReproduccionSection() {
 
   useEffect(() => {
     cargarRegistros();
-  }, [router, toast]);
+  }, [router]);
 
-  // Lógica de filtrado combinada
+  // --- FILTRADO (useMemo para rendimiento) ---
   const registrosFiltrados = useMemo(() => {
     return registros.filter((reg) => {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesSearch = 
-          reg.numero_monta?.toLowerCase().includes(searchLower) ||
-          reg.hembra?.arete?.toLowerCase().includes(searchLower) ||
-          reg.hembra?.nombre?.toLowerCase().includes(searchLower);
+          reg.numeroMonta?.toLowerCase().includes(searchLower) ||
+          reg.arete?.toLowerCase().includes(searchLower) ||
+          reg.nombreAnimal?.toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
 
@@ -77,13 +97,12 @@ export function ReproduccionSection() {
     });
   }, [registros, filters]);
 
-  // Extraer estados únicos para pasarlos a los filtros
   const opcionesEstados = [...new Set(registros.map(r => r.estado))].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-zinc-50">
       {/* ENCABEZADO STICKY */}
-      <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-zinc-200 sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -96,12 +115,18 @@ export function ReproduccionSection() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={cargarRegistros} disabled={cargando}>
-                {cargando && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={cargarRegistros} 
+                disabled={cargando}
+                className="hover:bg-zinc-100"
+              >
+                {cargando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Actualizar
               </Button>
               <Link href="/reproduccion/nuevo">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm">
                   <Plus className="w-4 h-4" /> Registrar Servicio
                 </Button>
               </Link>
@@ -110,21 +135,22 @@ export function ReproduccionSection() {
         </div>
       </div>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <div className="p-8">
+      {/* CUERPO PRINCIPAL */}
+      <div className="p-8 max-w-[1600px] mx-auto">
         <ReproduccionFilters 
           onFiltersChange={setFilters} 
           estados={opcionesEstados} 
         />
 
         {cargando ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <div className="flex flex-col items-center justify-center h-64 gap-3">
+            <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
+            <p className="text-zinc-500 text-sm font-medium animate-pulse">Consultando registros...</p>
           </div>
         ) : (
           <ReproduccionCards 
             registros={registrosFiltrados}
-            selectedRegistro={selectedRegistro?.id || selectedRegistro?.numero_monta}
+            selectedRegistro={selectedRegistro?.id}
             onRegistroSelect={(reg) => {
               setSelectedRegistro(reg);
               setIsSheetOpen(true);
@@ -133,8 +159,9 @@ export function ReproduccionSection() {
         )}
       </div>
 
+      {/* PANEL LATERAL DE DETALLES */}
       <ReproduccionDetailsSheet 
-        registro={selectedRegistro} 
+        registro={selectedRegistro as any} 
         isOpen={isSheetOpen} 
         onOpenChange={setIsSheetOpen} 
       />
