@@ -19,18 +19,12 @@ import {
   Info,
   User,
 } from "lucide-react";
-
-interface ReproduccionData {
-  id: number;
-  numero_monta: string;
-  fecha_programacion: string;
-  tipo_monta: string;
-  estado: string;
-  hembra: { arete: string; nombre: string };
-}
+// 👇 Importamos el tipo real que definimos en lib
+import type { RegistroReproduccion } from "@/lib/types/reproduccion";
 
 interface ReproduccionDetailsSheetProps {
-  registro: ReproduccionData | null;
+  // 👇 Usamos el tipo unificado para que coincida con el mapeo
+  registro: RegistroReproduccion | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -57,37 +51,27 @@ export function ReproduccionDetailsSheet({
     }
   };
 
-  const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  };
-
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        // 👇 Aquí igualamos el ancho y el scroll al de Sherly
         className="w-full sm:w-[85%] md:w-[75%] lg:w-[60%] xl:w-[50%] max-w-4xl overflow-y-auto p-0"
       >
         <div className="relative">
-          {/* 👇 Encabezado pegajoso con degradado igual al de animales */}
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10">
             <SheetHeader className="space-y-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <SheetTitle className="text-3xl font-bold text-zinc-900 flex items-center gap-2">
                     <Activity className="h-6 w-6 text-emerald-600" />
-                    Monta: {registro.numero_monta}
+                    Monta: {registro.numeroMonta}
                   </SheetTitle>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <Badge className={getBadgeColor(registro.estado)}>
                       {registro.estado}
                     </Badge>
                     <Badge variant="outline" className="bg-white">
-                      {registro.tipo_monta}
+                      {registro.tipoMonta}
                     </Badge>
                   </div>
                 </div>
@@ -106,42 +90,42 @@ export function ReproduccionDetailsSheet({
                 </div>
               </div>
 
-              {/* 👇 Grid de estadísticas rápidas como el de la Edad/Sexo/Lote */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
                 <div className="bg-white rounded-lg p-3 border border-zinc-200">
                   <p className="text-xs text-zinc-500 font-medium">Arete</p>
-                  <p className="text-lg font-bold text-zinc-900">{registro.hembra?.arete}</p>
+                  <p className="text-lg font-bold text-zinc-900">{registro.arete}</p>
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-zinc-200">
                   <p className="text-xs text-zinc-500 font-medium">Nombre</p>
                   <p className="text-lg font-bold text-zinc-900 truncate">
-                    {registro.hembra?.nombre || "N/A"}
+                    {registro.nombreAnimal || "N/A"}
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-zinc-200">
                   <p className="text-xs text-zinc-500 font-medium">Método</p>
-                  <p className="text-sm font-bold text-zinc-900 mt-1 flex items-center gap-1">
-                    {registro.tipo_monta === "Monta Natural" ? (
+                  <div className="flex items-center gap-1 mt-1">
+                    {registro.tipoMonta === "Monta Natural" ? (
                       <Stethoscope className="w-4 h-4 text-zinc-400" />
                     ) : (
                       <Syringe className="w-4 h-4 text-zinc-400" />
                     )}
-                    <span className="truncate">{registro.tipo_monta}</span>
-                  </p>
+                    <p className="text-sm font-bold text-zinc-900">{registro.tipoMonta}</p>
+                  </div>
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-zinc-200">
                   <p className="text-xs text-zinc-500 font-medium">Fecha Programada</p>
-                  <p className="text-sm font-bold text-zinc-900 mt-1 flex items-center gap-1">
+                  <div className="flex items-center gap-1 mt-1">
                     <Calendar className="w-4 h-4 text-zinc-400" />
-                    {new Date(registro.fecha_programacion).toLocaleDateString()}
-                  </p>
+                    <p className="text-sm font-bold text-zinc-900">
+                      {new Date(registro.fecha).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </SheetHeader>
           </div>
         </div>
 
-        {/* 👇 Contenido Principal (Cajas blancas con bordes) */}
         <div className="p-6">
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
@@ -153,7 +137,7 @@ export function ReproduccionDetailsSheet({
                 <p className="text-xs text-zinc-500 font-medium mb-1">Hembra Receptora</p>
                 <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
                   <User className="w-4 h-4 text-zinc-400" />
-                  {registro.hembra?.arete} - {registro.hembra?.nombre || "Sin nombre"}
+                  {registro.arete} - {registro.nombreAnimal}
                 </p>
               </div>
               <div className="border border-zinc-200 rounded-lg p-4 bg-white">
