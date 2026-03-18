@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { User, Phone, Mail, Shield, Calendar } from 'lucide-react';
 import type { Usuario } from '@/types/usuario';
