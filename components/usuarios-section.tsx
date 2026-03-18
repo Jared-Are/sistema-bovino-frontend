@@ -4,11 +4,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2 } from 'lucide-react';
-import { UsuarioFilters } from '@/components/usuario-filters';
-import { UsuarioDetailsSheet } from '@/components/usuario-details-sheet';
-import { UsuarioCards } from '@/components/usuario-cards';
+import { UsuarioFilters } from '@/components/usuarios-filters';
+import { UsuarioDetailsSheet } from '@/components/usuarios-details-sheet';
+import { UsuarioCards } from '@/components/usuarios-cards';
 import { usuariosApi } from '@/lib/api/usuarios';
-import type { Usuario } from '@/types/usuario';
+import type { Usuario } from '@/lib/types/usuarios';
 import Link from 'next/link';
 
 const mapBackendToFrontend = (backend: any): Usuario => ({
