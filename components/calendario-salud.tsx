@@ -75,7 +75,7 @@ export function CalendarioSalud({ tratamientos, onTratamientoClick }: Calendario
   return (
     <div >
       <Card>
-        <CardContent className="p-6">
+        <CardContent>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-emerald-600" />

@@ -213,7 +213,7 @@ export function AnimalSection() {
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900">
+              <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
                 <Beef className="h-6 w-6 text-emerald-600" />
                 Animales
               </h1>
