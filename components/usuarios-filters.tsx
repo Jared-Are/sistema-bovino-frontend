@@ -13,20 +13,20 @@ interface UsuarioFiltersProps {
 }
 
 // 1. OPCIONES para botones filtro
-const opcionesRoles = ['propietario', 'veterinario', 'operario'];
-const opcionesEstados = ['ACTIVO', 'INVITADO', 'BLOQUEADO'];
+const opcionesRoles = ['Propietario', 'Veterinario', 'Operario'];
+const opcionesEstados = ['Activo', 'Invitado', 'Bloqueado'];
 
 // 2. LABELS para mostrar bonito
 const rolLabels: Record<string, string> = {
-  'propietario': 'Propietario',
-  'veterinario': 'Veterinario', 
-  'operario': 'Operario',
+  'Propietario': 'propietario',
+  'Veterinario': 'veterinario', 
+  'Operario': 'operario',
 };
 
 const estadoLabels: Record<string, string> = {
-  'ACTIVO': 'Activo',
-  'INVITADO': 'Invitado',
-  'BLOQUEADO': 'Bloqueado',
+  'Activo': 'activo',
+  'Invitado': 'invitado',
+  'Bloqueado': 'bloqueado',
 };
 
 export function UsuarioFilters({ onFiltersChange, roles = [], estados = [] }: UsuarioFiltersProps) {

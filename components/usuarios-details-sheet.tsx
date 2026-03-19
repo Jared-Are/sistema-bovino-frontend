@@ -39,18 +39,18 @@ export function UsuarioDetailsSheet({
 
   const getRolBadgeColor = (rol: string) => {
   const colores: Record<string, string> = {
-    'PROPIETARIO': 'bg-purple-50 text-purple-700 border-purple-200',
-    'OPERARIO': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    'VETERINARIO': 'bg-blue-50 text-blue-700 border-blue-200',
+    'Propietario': 'bg-purple-50 text-purple-700 border-purple-200',
+    'Operario': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'Veterinario': 'bg-blue-50 text-blue-700 border-blue-200',
   };
   return colores[rol] || 'bg-gray-50 text-gray-700 border-gray-200';
 };
 
   const getEstadoBadgeColor = (estado: string) => {
     const colors: Record<string, string> = {
-      'PROPIETARIO': 'bg-purple-100 text-purple-800',
-      'OPERARIO': 'bg-emerald-100 text-emerald-800',
-      'VETERINARIO': 'bg-blue-100 text-blue-800',
+      'Activo': 'bg-purple-100 text-purple-800',
+      'Invitado': 'bg-emerald-100 text-emerald-800',
+      'Bloqueado': 'bg-blue-100 text-blue-800',
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';  
   };

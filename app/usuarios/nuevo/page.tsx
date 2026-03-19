@@ -25,7 +25,6 @@ import { usuariosApi } from "@/lib/api/usuarios";
 const usuarioSchema = z.object({
     nombre: z.string().min(2, "El nombre es muy corto").max(150, "El nombre es muy largo"),
     telefono: z.string().min(10, "Teléfono inválido").max(20),
-    email: z.string().email("Email inválido").optional(),
     rol: z.enum(['Propietario', 'Veterinario', 'Operario']),
 });
 
@@ -41,7 +40,6 @@ export default function NuevoUsuarioPage() {
     const [formData, setFormData] = useState({
         nombre: "",
         telefono: "",
-        email: "",
         rol: "Operario" as "Propietario" | "Veterinario" | "Operario",
     });
 
@@ -86,7 +84,6 @@ export default function NuevoUsuarioPage() {
             const payload = {
                 nombre: valid.nombre,
                 telefono: valid.telefono,
-                email: valid.email || null,
                 rol: valid.rol,
                 debe_cambiar_contrasena: true,
             };
@@ -164,20 +161,6 @@ export default function NuevoUsuarioPage() {
                             </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="email">Email</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <Input 
-                                        id="email" 
-                                        type="email"
-                                        className="pl-10"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                    />
-                                </div>
-                            </div>
                             <div>
                                 <Label>Rol *</Label>
                                 <Select value={formData.rol} 
@@ -207,7 +190,6 @@ export default function NuevoUsuarioPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
                         <div className="flex gap-3 pt-4">
                             <Button type="submit" disabled={loading} className="bg-purple-600 hover:bg-purple-700">
