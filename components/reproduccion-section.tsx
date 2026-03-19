@@ -4,30 +4,22 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// Importación de componentes modulares
 import { ReproduccionDetailsSheet } from "./reproduccion-details-sheet";
 import { ReproduccionCards } from "./reproduccion-cards";
 import { ReproduccionFilters } from "./reproduccion-filters";
-
-// Importación de lógica centralizada (Mejoras de Alex)
 import { reproduccionApi } from "@/lib/api/reproduccion";
 import type { RegistroReproduccion, ReproduccionBackend } from "@/lib/types/reproduccion";
 
-// UI e Iconos
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-/**
- * Función de Mapeo: Convierte los datos crudos del Backend (snake_case)
- * al formato amigable del Frontend (camelCase).
- */
 const mapBackendToFrontend = (item: ReproduccionBackend): RegistroReproduccion => ({
   id: item.id,
   numeroMonta: item.numero_monta,
   fecha: item.fecha_programacion,
   tipoMonta: item.tipo_monta,
-  estado: item.estado as any,
+  estado: item.estado, 
   animalId: item.hembra?.animal_id.toString() || "0",
   arete: item.hembra?.arete || "Sin arete",
   nombreAnimal: item.hembra?.nombre || "Sin nombre",
@@ -37,31 +29,24 @@ export function ReproduccionSection() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // --- ESTADOS ---
   const [registros, setRegistros] = useState<RegistroReproduccion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filters, setFilters] = useState({ estados: [] as string[], search: "" });
   const [selectedRegistro, setSelectedRegistro] = useState<RegistroReproduccion | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // --- LÓGICA DE CARGA ---
   const cargarRegistros = async () => {
     try {
       setCargando(true);
       const token = localStorage.getItem("token");
-      
       if (!token) {
         router.push("/login");
         return;
       }
 
-      // Uso de la API centralizada
       const data: ReproduccionBackend[] = await reproduccionApi.getMontas(token);
-      
-      // Aplicamos el mapeo para tener datos limpios
       const datosMapeados = data.map(mapBackendToFrontend);
       setRegistros(datosMapeados);
-      
     } catch (error: any) {
       toast({ 
         title: "Error", 
@@ -77,7 +62,6 @@ export function ReproduccionSection() {
     cargarRegistros();
   }, [router]);
 
-  // --- FILTRADO (useMemo para rendimiento) ---
   const registrosFiltrados = useMemo(() => {
     return registros.filter((reg) => {
       if (filters.search) {
@@ -101,7 +85,6 @@ export function ReproduccionSection() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      {/* ENCABEZADO STICKY */}
       <div className="bg-white border-b border-zinc-200 sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
@@ -114,7 +97,24 @@ export function ReproduccionSection() {
                 {cargando ? "Cargando..." : `${registrosFiltrados.length} registros encontrados`}
               </p>
             </div>
+            
             <div className="flex items-center gap-3">
+              {/* 👇 Botones estilo Sherly con el ícono Plus */}
+              <div className="flex items-center gap-2 mr-2 border-r pr-4 border-zinc-200">
+                <Link href="/reproduccion/diagnosticos">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    <Plus className="w-3 h-3" />
+                    Diagnósticos
+                  </Button>
+                </Link>
+                <Link href="/reproduccion/partos">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    <Plus className="w-3 h-3" />
+                    Partos
+                  </Button>
+                </Link>
+              </div>
+
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -135,7 +135,6 @@ export function ReproduccionSection() {
         </div>
       </div>
 
-      {/* CUERPO PRINCIPAL */}
       <div className="p-8 max-w-[1600px] mx-auto">
         <ReproduccionFilters 
           onFiltersChange={setFilters} 
@@ -159,11 +158,11 @@ export function ReproduccionSection() {
         )}
       </div>
 
-      {/* PANEL LATERAL DE DETALLES */}
       <ReproduccionDetailsSheet 
         registro={selectedRegistro as any} 
         isOpen={isSheetOpen} 
         onOpenChange={setIsSheetOpen} 
+        onSuccess={cargarRegistros}
       />
     </div>
   );
