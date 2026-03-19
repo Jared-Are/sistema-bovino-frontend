@@ -8,11 +8,7 @@ export interface LecheBackend {
   numero_produccion: string;
   cantidad: number; // litros
   fecha_creacion: string;
-  animal?: {
-    animal_id: number;
-    arete: string;
-    nombre: string;
-  };
+  animal?: any;
 }
 
 export interface CarneBackend {
@@ -20,11 +16,7 @@ export interface CarneBackend {
   fincaId: number;
   peso_canal: number;
   fecha_creacion: string;
-  animal?: {
-    animal_id: number;
-    arete: string;
-    nombre: string;
-  };
+  animal?: any;
 }
 
 // --- Frontend unified type ---
@@ -42,4 +34,5 @@ export interface RegistroProduccion {
   pesoCanal?: number;
   // Common
   fecha: string;
+  animal?: any;
 }

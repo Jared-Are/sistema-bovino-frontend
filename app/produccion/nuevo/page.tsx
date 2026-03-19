@@ -32,13 +32,14 @@ const carneSchema = z.object({
     peso_canal: z.coerce.number().min(10, "Mínimo 10 kg").max(600, "Máximo 600 kg"),
 });
 
-type AnimalSimple = { 
-    animal_id: number; 
-    arete: string; 
+type AnimalSimple = {
+    animal_id: number;
+    arete: string;
     nombre: string;
     sexo: string;
     estado_reproductivo: string;
     fecha_nacimiento: string;
+    peso_actual: number;
 };
 
 export default function NuevaProduccionPage() {
@@ -72,7 +73,7 @@ export default function NuevaProduccionPage() {
     const filteredAnimales = animales.filter(a => {
         if (tipo === 'leche') {
             return a.sexo === 'Hembra' && (
-                a.estado_reproductivo?.toLowerCase() === 'lactando' || 
+                a.estado_reproductivo?.toLowerCase() === 'lactando' ||
                 a.estado_reproductivo?.toLowerCase() === 'parida'
             );
         } else {
@@ -137,21 +138,25 @@ export default function NuevaProduccionPage() {
     }, [router, toast]);
 
     useEffect(() => {
-        if (tipo === 'leche' && formData.animalId) {
+        if (formData.animalId) {
             const date = new Date();
-            const ddmmyy = date.getDate().toString().padStart(2, '0') + 
-                           (date.getMonth() + 1).toString().padStart(2, '0') + 
-                           date.getFullYear().toString().slice(-2);
-            
-            // Usamos el ID correlativo de la tabla + 1
-            const nuevoNumero = `L-${ddmmyy}-${(maxId + 1).toString().padStart(3, '0')}`;
-            
+            const ddmmyy = date.getDate().toString().padStart(2, '0') +
+                (date.getMonth() + 1).toString().padStart(2, '0') +
+                date.getFullYear().toString().slice(-2);
+
+            let nuevoNumero = "";
+            if (tipo === 'leche') {
+                nuevoNumero = `L-${ddmmyy}-${(maxId + 1).toString().padStart(3, '0')}`;
+            } else {
+                nuevoNumero = `C-${ddmmyy}-${formData.animalId.padStart(3, '0')}`;
+            }
+
             setFormData(prev => ({
                 ...prev,
                 numero_produccion: nuevoNumero
             }));
         }
-    }, [tipo, formData.animalId]);
+    }, [tipo, formData.animalId, maxId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -248,8 +253,8 @@ export default function NuevaProduccionPage() {
                         {/* Animal */}
                         <div>
                             <Label>Animal *</Label>
-                            <Select 
-                                value={formData.animalId} 
+                            <Select
+                                value={formData.animalId}
                                 onValueChange={(v) => setFormData({ ...formData, animalId: v })}
                                 disabled={filteredAnimales.length === 0}
                             >
@@ -259,7 +264,7 @@ export default function NuevaProduccionPage() {
                                 <SelectContent>
                                     {filteredAnimales.map((a) => (
                                         <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                            {a.arete} - {a.nombre || 'Sin nombre'} ({a.sexo})
+                                            {a.nombre || 'Sin nombre'}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -270,7 +275,7 @@ export default function NuevaProduccionPage() {
                         {tipo === 'leche' ? (
                             <>
                                 <div>
-                                    <Label>Número de Producción *</Label>
+                                    <Label>Número de Producción</Label>
                                     <div className="relative">
                                         <Hash className="absolute left-2 top-2.5 h-4 w-4 text-blue-400" />
                                         <Input
@@ -295,16 +300,53 @@ export default function NuevaProduccionPage() {
                                 </div>
                             </>
                         ) : (
-                            <div>
-                                <Label>Peso en Canal (kg) *</Label>
-                                <div className="relative">
-                                    <Scale className="absolute left-2 top-2.5 h-4 w-4 text-amber-400" />
-                                    <Input
-                                        type="number" step="0.1" min="10" max="600" className="pl-8"
-                                        placeholder="Ej: 250"
-                                        value={formData.peso_canal}
-                                        onChange={(e) => setFormData({ ...formData, peso_canal: e.target.value })}
-                                    />
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Número de Producción</Label>
+                                    <div className="relative">
+                                        <Hash className="absolute left-2 top-2.5 h-4 w-4 text-amber-400" />
+                                        <Input
+                                            className="pl-8 bg-zinc-50 border-zinc-200 text-zinc-500 font-mono"
+                                            readOnly
+                                            placeholder="Generando..."
+                                            value={formData.numero_produccion}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label>Peso en Canal (kg) *</Label>
+                                    <div className="relative">
+                                        <Scale className="absolute left-2 top-2.5 h-4 w-4 text-amber-400" />
+                                        <Input
+                                            type="number"
+                                            step="0.1"
+                                            min="10"
+                                            className="pl-8"
+                                            placeholder="Ej: 250"
+                                            value={formData.peso_canal}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setFormData({ ...formData, peso_canal: val });
+
+                                                // Validación personalizada (62% del peso actual)
+                                                const selectedAnimal = animales.find(a => a.animal_id.toString() === formData.animalId);
+                                                if (selectedAnimal && val) {
+                                                    const currentWeight = Number(selectedAnimal.peso_actual) || (selectedAnimal as any).ultimo_peso || (selectedAnimal as any).ultimoPeso || 0;
+                                                    const maxAllowed = currentWeight * 0.62;
+                                                    if (Number(val) > maxAllowed) {
+                                                        e.target.setCustomValidity(`El peso del canal (${val} kg) excede el rendimiento máximo del 62% (${maxAllowed.toFixed(2)} kg) para un animal de ${currentWeight} kg`);
+                                                    } else {
+                                                        e.target.setCustomValidity("");
+                                                    }
+                                                } else {
+                                                    e.target.setCustomValidity("");
+                                                }
+                                            }}
+                                            onInvalid={(e) => {
+                                                // El mensaje ya está seteado por setCustomValidity
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}

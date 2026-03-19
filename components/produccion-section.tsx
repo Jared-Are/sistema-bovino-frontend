@@ -24,6 +24,7 @@ const mapLecheToFrontend = (b: LecheBackend): RegistroProduccion => ({
   numeroProduccion: b.numero_produccion,
   cantidad: b.cantidad,
   fecha: b.fecha_creacion?.split('T')[0] || '',
+  animal: b.animal,
 });
 
 // Mapear carne del backend al frontend
@@ -35,6 +36,7 @@ const mapCarneToFrontend = (b: CarneBackend): RegistroProduccion => ({
   nombreAnimal: b.animal?.nombre || 'Sin nombre',
   pesoCanal: b.peso_canal,
   fecha: b.fecha_creacion?.split('T')[0] || '',
+  animal: b.animal,
 });
 
 export function ProduccionSection() {

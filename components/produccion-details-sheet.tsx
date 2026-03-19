@@ -44,29 +44,36 @@ export function ProduccionDetailsSheet({
   const [isAnimalSheetOpen, setIsAnimalSheetOpen] = useState(false);
 
   useEffect(() => {
-    if (isOpen && registro?.animalId) {
-      const fetchAnimal = async () => {
-        setLoadingAnimal(true);
-        try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales/${registro.animalId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setAnimal(data);
+    if (isOpen && registro) {
+      // Si el registro ya trae la info del animal (gracias a withDeleted en el backend), la usamos
+      if (registro.animal) {
+        setAnimal(registro.animal);
+        setLoadingAnimal(false);
+      } else if (registro.animalId) {
+        // Fallback: solo si no viene en el registro, intentamos buscarlo
+        const fetchAnimal = async () => {
+          setLoadingAnimal(true);
+          try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales/${registro.animalId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setAnimal(data);
+            }
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setLoadingAnimal(false);
           }
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoadingAnimal(false);
-        }
-      };
-      fetchAnimal();
+        };
+        fetchAnimal();
+      }
     } else if (!isOpen) {
       setAnimal(null);
     }
-  }, [isOpen, registro?.animalId]);
+  }, [isOpen, registro]);
 
   if (!registro) return null;
 
@@ -221,7 +228,15 @@ export function ProduccionDetailsSheet({
             sexo: animal.sexo,
             raza: animal.raza?.nombre || 'Sin raza',
             fechaNacimiento: animal.fecha_nacimiento?.split('T')[0] || '',
-            edad: 0,
+            edad: (() => {
+              if (!animal.fecha_nacimiento) return 0;
+              const birth = new Date(animal.fecha_nacimiento);
+              const today = new Date();
+              let age = today.getFullYear() - birth.getFullYear();
+              const m = today.getMonth() - birth.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+              return age;
+            })(),
             ultimoPeso: animal.peso_actual,
             pesoNacimiento: animal.peso_nacimiento,
             lote: animal.lote?.nombre || 'Sin lote',
