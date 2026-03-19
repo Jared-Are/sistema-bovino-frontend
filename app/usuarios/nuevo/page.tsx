@@ -190,7 +190,6 @@ export default function NuevoUsuarioPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
                         <div className="flex gap-3 pt-4">
                             <Button type="submit" disabled={loading} className="bg-purple-600 hover:bg-purple-700">

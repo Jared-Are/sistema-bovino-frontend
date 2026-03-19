@@ -207,7 +207,6 @@ export default function EditarUsuarioPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
