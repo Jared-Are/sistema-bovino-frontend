@@ -14,8 +14,6 @@ import {
     User,
     Shield,
     Phone,
-    Mail,
-    MapPin,
     AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
@@ -26,9 +24,8 @@ import { usuariosApi } from "@/lib/api/usuarios";
 const usuarioSchema = z.object({
     nombre: z.string().min(2, "El nombre es muy corto").max(150, "El nombre es muy largo"),
     telefono: z.string().min(10, "Teléfono inválido").max(20),
-    email: z.string().email("Email inválido").optional(),
     rol: z.enum(['Propietario', 'Veterinario', 'Operario']),
-    estado: z.enum(['Activo', 'Inactivo', 'Suspendido']),
+    estado: z.enum(['Activo', 'Invitado', 'Bloqueado']),
 });
 
 type Finca = { finca_id: number; nombre: string; };
@@ -48,7 +45,6 @@ export default function EditarUsuarioPage() {
     const [formData, setFormData] = useState({
         nombre: "",
         telefono: "",
-        email: "",
         rol: "Operario" as "Propietario" | "Veterinario" | "Operario",
         estado: "Activo" as "Activo" | "Invitado" | "Bloqueado",
     });
@@ -73,7 +69,7 @@ export default function EditarUsuarioPage() {
                     'Content-Type': 'application/json'
                 };
 
-                const [usuarioRes, fincasRes] = await Promise.all([
+                const [usuarioRes] = await Promise.all([
                     fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios/${id}`, { headers })
                 ]);
 
@@ -84,7 +80,6 @@ export default function EditarUsuarioPage() {
                 setFormData({
                     nombre: usuario.nombre || "",
                     telefono: usuario.telefono || "",
-                    email: usuario.email || "",
                     rol: usuario.rol || "Operario",
                     fincaId: usuario.finca?.finca_id?.toString() || "",
                     estado: usuario.estado || "Activo",
@@ -111,7 +106,6 @@ export default function EditarUsuarioPage() {
             const payload = {
                 nombre: valid.nombre,
                 telefono: valid.telefono,
-                email: valid.email || null,
                 rol: valid.rol,
                 estado: valid.estado,
             };
@@ -199,20 +193,6 @@ export default function EditarUsuarioPage() {
                             </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="email">Email</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <Input 
-                                        id="email" 
-                                        type="email"
-                                        className="pl-10"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                    />
-                                </div>
-                            </div>
                             <div>
                                 <Label>Estado *</Label>
                                 <Select value={formData.estado} 

@@ -1,10 +1,9 @@
-export type RolUsuario = 'PROPIETARIO' | 'OPERARIO' | 'VETERINARIO';
-export type EstadoUsuario = 'ACTIVO' | 'INVITADO' | 'BLOQUEADO';
+export type RolUsuario = 'Propietario' | 'Operario' | 'Veterinario';
+export type EstadoUsuario = 'Activo' | 'Invitado' | 'Bloqueado';
 
 export interface UsuarioBackend {
   usuario_id: string;
   nombre: string;
-  email: string | null;
   telefono: string;
   rol: RolUsuario;
   estado: EstadoUsuario;
@@ -16,7 +15,6 @@ export interface UsuarioBackend {
 export interface Usuario {
   id: string;
   nombre: string;
-  email: string | null;
   telefono: string;
   rol: RolUsuario;        
   estado: EstadoUsuario;     

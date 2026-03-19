@@ -14,7 +14,6 @@ import Link from 'next/link';
 const mapBackendToFrontend = (backend: any): Usuario => ({
   id: backend.usuario_id,
   nombre: backend.nombre,
-  email: backend.email,
   telefono: backend.telefono,
   rol: backend.rol,
   estado: backend.estado,
@@ -101,8 +100,8 @@ export function UsuariosSection() {
 
   const selectedUsuario = usuarios.find((u) => u.id === selectedUsuarioId);
 
-  const opcionesRoles = ['ADMINISTRADOR', 'SUPERVISOR', 'OPERARIO'];
-  const opcionesEstados = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO'];
+  const opcionesRoles = ['Propietario', 'Operario', 'VETERINARIO'];
+  const opcionesEstados = ['Activo', 'Invitado', 'Bloqueado'];
 
   return (
     <div className="min-h-screen bg-zinc-50">
