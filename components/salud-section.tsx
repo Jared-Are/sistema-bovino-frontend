@@ -4,18 +4,20 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Loader2,
   Stethoscope,
-  Calendar,
-  Syringe,
-  Pill,
+  LayoutGrid,
+  Calendar as CalendarIcon,
+  Kanban
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SaludFilters } from "./salud-filters";
+import { TratamientoCard } from "./tratamiento-card";
+import { KanbanSalud } from "./kanban-salud";
+import { CalendarioSalud } from "./calendario-salud";
 import { TratamientoDetailsSheet } from "./tratamiento-details-sheet";
 
 type Tratamiento = {
@@ -27,6 +29,13 @@ type Tratamiento = {
   descripcion?: string;
 };
 
+type GlobalFilters = {
+  tipos: string[];
+  estados: string[];
+  search: string;
+  mes?: string;
+};
+
 export function SaludSection() {
   const router = useRouter();
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
@@ -34,13 +43,16 @@ export function SaludSection() {
   const [error, setError] = useState<string>('');
   const [selectedTratamiento, setSelectedTratamiento] = useState<Tratamiento | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [filters, setFilters] = useState({
-    tipos: [] as string[],
-    estados: [] as string[],
+  const [activeTab, setActiveTab] = useState('cards');
+  
+//filtros globales
+  const [globalFilters, setGlobalFilters] = useState<GlobalFilters>({
+    tipos: [],
+    estados: [],
     search: '',
-    fechaInicio: '',
-    fechaFin: '',
+    mes: undefined,
   });
+
   const { toast } = useToast();
 
   const cargarTratamientos = async () => {
@@ -80,11 +92,20 @@ export function SaludSection() {
     cargarTratamientos();
   }, []);
 
+  const fechasDisponibles = useMemo(() => {
+    const meses = new Set<string>();
+    tratamientos.forEach(t => {
+      const fecha = new Date(t.fecha);
+      meses.add(`${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`);
+    });
+    return Array.from(meses).sort().reverse();
+  }, [tratamientos]);
+
+  // Aplicar filtros globales a los tratamientos
   const tratamientosFiltrados = useMemo(() => {
     return tratamientos.filter((t) => {
-      // Filtro por búsqueda
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
+      if (globalFilters.search) {
+        const searchLower = globalFilters.search.toLowerCase();
         const matchesSearch = 
           t.animal?.arete?.toLowerCase().includes(searchLower) ||
           t.animal?.nombre?.toLowerCase().includes(searchLower) ||
@@ -93,55 +114,76 @@ export function SaludSection() {
         if (!matchesSearch) return false;
       }
 
-      // Filtro por tipo de tratamiento
-      if (filters.tipos.length > 0) {
-        if (!filters.tipos.includes(t.tipo_tratamiento?.nombre || '')) return false;
+      if (globalFilters.tipos.length > 0) {
+        if (!globalFilters.tipos.includes(t.tipo_tratamiento?.nombre || '')) return false;
       }
 
-      // Filtro por estado
-      if (filters.estados.length > 0) {
-        if (!filters.estados.includes(t.estado)) return false;
+      if (globalFilters.estados.length > 0) {
+        if (!globalFilters.estados.includes(t.estado)) return false;
       }
 
-      // Filtro por fecha
-      if (filters.fechaInicio) {
-        const fechaTratamiento = new Date(t.fecha).setHours(0,0,0,0);
-        const fechaInicio = new Date(filters.fechaInicio).setHours(0,0,0,0);
-        if (fechaTratamiento < fechaInicio) return false;
-      }
-
-      if (filters.fechaFin) {
-        const fechaTratamiento = new Date(t.fecha).setHours(0,0,0,0);
-        const fechaFin = new Date(filters.fechaFin).setHours(0,0,0,0);
-        if (fechaTratamiento > fechaFin) return false;
+      if (globalFilters.mes) {
+        const fecha = new Date(t.fecha);
+        const mesTratamiento = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+        if (mesTratamiento !== globalFilters.mes) return false;
       }
 
       return true;
     });
-  }, [tratamientos, filters]);
+  }, [tratamientos, globalFilters]);
 
   const opcionesTipos = [...new Set(tratamientos.map(t => t.tipo_tratamiento?.nombre).filter(Boolean))] as string[];
   const opcionesEstados = [...new Set(tratamientos.map(t => t.estado))].filter(Boolean);
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case "ACTIVO":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "PENDIENTE":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "COMPLETADO":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
-      case "CANCELADO":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+  const handleEstadoChange = async (id: number, nuevoEstado: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tratamientos/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+
+      if (!response.ok) throw new Error('Error al actualizar estado');
+
+      setTratamientos(prev => prev.map(t => 
+        t.id === id ? { ...t, estado: nuevoEstado } : t
+      ));
+
+      toast({ title: "Estado actualizado", description: "El tratamiento cambió de estado" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
-  const getIcono = (tipoNombre?: string) => {
-    if (tipoNombre?.toLowerCase().includes("vacuna")) return <Syringe className="h-4 w-4" />;
-    if (tipoNombre?.toLowerCase().includes("desparasit")) return <Pill className="h-4 w-4" />;
-    return <Stethoscope className="h-4 w-4" />;
+  const handleDelete = async (id: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tratamientos/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) throw new Error('Error al eliminar');
+
+      setTratamientos(prev => prev.filter(t => t.id !== id));
+      toast({ title: "Tratamiento eliminado" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleEdit = (tratamiento: Tratamiento) => {
+    router.push(`/salud/${tratamiento.id}`);
   };
 
   return (
@@ -155,9 +197,7 @@ export function SaludSection() {
                 Control Sanitario
               </h1>
               <p className="text-sm text-zinc-500 mt-1">
-                {cargando
-                  ? "Cargando..."
-                  : `${tratamientosFiltrados.length} tratamientos registrados`}
+                {cargando ? 'Cargando...' : `${tratamientosFiltrados.length} tratamientos registrados`}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -174,8 +214,8 @@ export function SaludSection() {
                 </Link>
               </div>
 
-              <Button
-                variant="outline"
+              <Button 
+                variant="outline" 
                 size="sm"
                 onClick={cargarTratamientos}
                 disabled={cargando}
@@ -185,10 +225,11 @@ export function SaludSection() {
                 ) : null}
                 Actualizar
               </Button>
-
+              
               <Link href="/salud/nuevo">
                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
-                  <Plus className="w-4 h-4" /> Registrar Tratamiento
+                  <Plus className="w-4 h-4" />
+                  Registrar Tratamiento
                 </Button>
               </Link>
             </div>
@@ -198,9 +239,11 @@ export function SaludSection() {
 
       <div className="p-8">
         <SaludFilters 
-          onFiltersChange={setFilters}
+          onFiltersChange={setGlobalFilters}
           tipos={opcionesTipos}
           estados={opcionesEstados}
+          fechasDisponibles={fechasDisponibles}
+          showDateFilter={true}
         />
 
         {cargando ? (
@@ -209,60 +252,67 @@ export function SaludSection() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tratamientosFiltrados.map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => {
-                    setSelectedTratamiento(t);
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
+                <TabsTrigger value="cards" className="gap-2">
+                  <LayoutGrid className="h-4 w-4" />
+                  Tarjetas
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="gap-2">
+                  <Kanban className="h-4 w-4" />
+                  Kanban
+                </TabsTrigger>
+                <TabsTrigger value="calendario" className="gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  Calendario
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="cards" className="mt-0">
+                {tratamientosFiltrados.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {tratamientosFiltrados.map((tratamiento) => (
+                      <TratamientoCard
+                        key={tratamiento.id}
+                        tratamiento={tratamiento}
+                        onClick={() => {
+                          setSelectedTratamiento(tratamiento);
+                          setIsSheetOpen(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 border-2 border-dashed border-zinc-200 rounded-lg">
+                    <LayoutGrid className="h-12 w-12 text-zinc-300 mx-auto mb-3" />
+                    <p className="text-zinc-500">No hay tratamientos con los filtros seleccionados</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="kanban" className="mt-0">
+                <KanbanSalud
+                  tratamientos={tratamientosFiltrados} 
+                  onTratamientoClick={(tratamiento) => {
+                    setSelectedTratamiento(tratamiento);
                     setIsSheetOpen(true);
                   }}
-                  className="cursor-pointer"
-                >
-                  <Card className="hover:border-emerald-500 transition-colors h-full">
-                    <CardContent className="p-5">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <p className="text-xs text-zinc-500 font-medium">ANIMAL</p>
-                          <p className="font-bold text-lg text-zinc-900">
-                            {t.animal?.arete || "Sin arete"}
-                          </p>
-                          <p className="text-sm text-zinc-600">
-                            {t.animal?.nombre || "Sin nombre"}
-                          </p>
-                        </div>
-                        <Badge className={getEstadoColor(t.estado)}>
-                          {t.estado}
-                        </Badge>
-                      </div>
+                  onEstadoChange={handleEstadoChange}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              </TabsContent>
 
-                      <div className="space-y-2 border-t pt-4">
-                        <div className="flex items-center text-sm text-zinc-600 font-medium gap-2">
-                          {getIcono(t.tipo_tratamiento?.nombre)}
-                          {t.tipo_tratamiento?.nombre || "Sin tipo"}
-                        </div>
-                        <div className="flex items-center text-sm text-zinc-600">
-                          <Calendar className="w-4 h-4 mr-2 text-zinc-400" />
-                          {new Date(t.fecha).toLocaleDateString()}
-                        </div>
-                        {t.descripcion && (
-                          <p className="text-xs text-zinc-500 mt-2 line-clamp-2">
-                            {t.descripcion}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
-            </div>
-
-            {tratamientosFiltrados.length === 0 && (
-              <div className="text-center py-16 bg-white rounded-lg border border-dashed border-zinc-300 mt-6">
-                <Stethoscope className="h-12 w-12 text-zinc-300 mx-auto mb-3" />
-                <p className="text-zinc-500 font-medium">No hay tratamientos registrados</p>
-              </div>
-            )}
+              <TabsContent value="calendario" className="mt-0">
+                <CalendarioSalud
+                  tratamientos={tratamientosFiltrados} 
+                  onTratamientoClick={(tratamiento) => {
+                    setSelectedTratamiento(tratamiento);
+                    setIsSheetOpen(true);
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>

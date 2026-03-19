@@ -1,15 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { X, Plus, Calendar } from 'lucide-react';
 
 interface SaludFiltersProps {
-  onFiltersChange?: (filters: any) => void;
+  onFiltersChange?: (filters: {
+    tipos: string[];
+    estados: string[];
+    search: string;
+    mes?: string;
+  }) => void;
   tipos?: string[];
   estados?: string[];
+  fechasDisponibles?: string[];
+  showDateFilter?: boolean;
 }
 
 const estadoLabels: Record<string, string> = {
@@ -19,17 +27,33 @@ const estadoLabels: Record<string, string> = {
   CANCELADO: 'Cancelado',
 };
 
-export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: SaludFiltersProps) {
+export function SaludFilters({ 
+  onFiltersChange, 
+  tipos = [], 
+  estados = [],
+  fechasDisponibles = [],
+  showDateFilter = true
+}: SaludFiltersProps) {
   const [selectedTipos, setSelectedTipos] = useState<string[]>([]);
   const [selectedEstados, setSelectedEstados] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [mesSeleccionado, setMesSeleccionado] = useState<string>('todos');
+
+  // Efecto para notificar cambios
+  useEffect(() => {
+    onFiltersChange?.({
+      tipos: selectedTipos,
+      estados: selectedEstados,
+      search: searchTerm,
+      mes: mesSeleccionado !== 'todos' ? mesSeleccionado : undefined,
+    });
+  }, [selectedTipos, selectedEstados, searchTerm, mesSeleccionado, onFiltersChange]);
 
   const handleAddTipo = (tipo: string) => {
     const newTipos = selectedTipos.includes(tipo)
       ? selectedTipos.filter((t) => t !== tipo)
       : [...selectedTipos, tipo];
     setSelectedTipos(newTipos);
-    onFiltersChange?.({ tipos: newTipos, estados: selectedEstados, search: searchTerm });
   };
 
   const handleAddEstado = (estado: string) => {
@@ -37,28 +61,38 @@ export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: Salu
       ? selectedEstados.filter((e) => e !== estado)
       : [...selectedEstados, estado];
     setSelectedEstados(newEstados);
-    onFiltersChange?.({ tipos: selectedTipos, estados: newEstados, search: searchTerm });
   };
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    onFiltersChange?.({ tipos: selectedTipos, estados: selectedEstados, search: value });
   };
 
   const handleClearFilters = () => {
     setSelectedTipos([]);
     setSelectedEstados([]);
     setSearchTerm('');
-    onFiltersChange?.({ tipos: [], estados: [], search: '' });
+    setMesSeleccionado('todos');
   };
 
-  const hasFilters = selectedTipos.length > 0 || selectedEstados.length > 0 || searchTerm.length > 0;
+  const hasFilters = 
+    selectedTipos.length > 0 || 
+    selectedEstados.length > 0 || 
+    searchTerm.length > 0 ||
+    mesSeleccionado !== 'todos';
+
+  const formatearMes = (mes: string) => {
+    const [year, month] = mes.split('-');
+    const fecha = new Date(parseInt(year), parseInt(month) - 1);
+    return fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  };
 
   return (
     <div className="space-y-4 mb-6 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
       {/* Search Input */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 mb-2">Búsqueda</label>
+        <label className="block text-sm font-medium text-zinc-700 mb-2">
+          Búsqueda
+        </label>
         <Input
           placeholder="Buscar por arete, nombre o tratamiento..."
           value={searchTerm}
@@ -67,10 +101,35 @@ export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: Salu
         />
       </div>
 
+      {/* Filtro por Mes */}
+      {showDateFilter && fechasDisponibles.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 mb-2">
+            Filtrar por Mes
+          </label>
+          <Select value={mesSeleccionado} onValueChange={setMesSeleccionado}>
+            <SelectTrigger className="w-full bg-white">
+              <Calendar className="h-4 w-4 mr-2 text-zinc-500" />
+              <SelectValue placeholder="Seleccionar mes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los meses</SelectItem>
+              {fechasDisponibles.map((mes) => (
+                <SelectItem key={mes} value={mes}>
+                  {formatearMes(mes)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Tipos de Tratamiento Multi-select */}
       {tipos.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Tipos de Tratamiento</label>
+          <label className="block text-sm font-medium text-zinc-700 mb-2">
+            Tipos de Tratamiento
+          </label>
           <div className="flex flex-wrap gap-2">
             {tipos.map((tipo) => (
               <Button
@@ -78,7 +137,7 @@ export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: Salu
                 onClick={() => handleAddTipo(tipo)}
                 variant={selectedTipos.includes(tipo) ? 'default' : 'outline'}
                 size="sm"
-                className={selectedTipos.includes(tipo) ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                className={selectedTipos.includes(tipo) ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white'}
               >
                 <Plus className="w-3 h-3 mr-1" />
                 {tipo}
@@ -106,7 +165,9 @@ export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: Salu
       {/* Estados Multi-select */}
       {estados.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Estados</label>
+          <label className="block text-sm font-medium text-zinc-700 mb-2">
+            Estados
+          </label>
           <div className="flex flex-wrap gap-2">
             {estados.map((estado) => (
               <Button
@@ -114,7 +175,7 @@ export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: Salu
                 onClick={() => handleAddEstado(estado)}
                 variant={selectedEstados.includes(estado) ? 'default' : 'outline'}
                 size="sm"
-                className={selectedEstados.includes(estado) ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                className={selectedEstados.includes(estado) ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white'}
               >
                 <Plus className="w-3 h-3 mr-1" />
                 {estadoLabels[estado] || estado}
@@ -145,7 +206,7 @@ export function SaludFilters({ onFiltersChange, tipos = [], estados = [] }: Salu
           variant="outline"
           size="sm"
           onClick={handleClearFilters}
-          className="w-full"
+          className="w-full bg-white"
         >
           <X className="w-4 h-4 mr-2" />
           Limpiar todos los filtros
