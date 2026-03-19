@@ -187,9 +187,6 @@ export function TratamientoDetailsSheet({
                         {tratamiento.animal?.nombre || 'Sin nombre'}
                       </p>
                     </div>
-                    <Badge variant="outline" className="bg-emerald-50">
-                      ID: {tratamiento.animal?.animal_id}
-                    </Badge>
                   </div>
                 </div>
               </div>

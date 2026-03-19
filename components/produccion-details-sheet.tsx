@@ -8,15 +8,13 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Calendar, 
-  Droplets, 
-  Beef,
-  User, 
-  Trash2, 
+import {
+  Calendar,
+  Droplets,
+  Trash2,
   Pencil,
   Scale,
-  Hash,
+  Hash
 } from 'lucide-react';
 import Link from 'next/link';
 import type { RegistroProduccion } from '@/lib/types/produccion';
@@ -37,11 +35,10 @@ export function ProduccionDetailsSheet({
   if (!registro) return null;
 
   const isLeche = registro.tipo === 'leche';
-  const editUrl = `/produccion/${registro.tipo}/${registro.id}`;
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto [&>button]:hidden">
         <SheetHeader className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <Badge className={isLeche ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white'}>
@@ -49,17 +46,19 @@ export function ProduccionDetailsSheet({
             </Badge>
             <div className="flex gap-2">
               <Link href={`/produccion/${registro.id}`}>
-                <Button size="icon" variant="outline" className="h-8 w-8 text-zinc-500 hover:text-emerald-600">
+                <Button variant="outline" size="sm" className="h-9 gap-2 text-zinc-600 hover:text-emerald-600 hover:border-emerald-200">
                   <Pencil className="w-4 h-4" />
+                  <span className="font-medium">Editar</span>
                 </Button>
               </Link>
-              <Button 
-                size="icon" 
-                variant="outline" 
-                className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600"
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-9 gap-2"
                 onClick={() => onDelete?.(registro.id)}
               >
                 <Trash2 className="w-4 h-4" />
+                <span className="font-medium">Borrar</span>
               </Button>
             </div>
           </div>
@@ -86,43 +85,31 @@ export function ProduccionDetailsSheet({
           )}
 
           <div className="space-y-4">
-            {isLeche && registro.numeroProduccion && (
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-zinc-100">
-                <div className="h-10 w-10 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400">
-                  <Hash className="w-5 h-5" />
+            <h4 className="text-sm font-semibold text-zinc-900 px-1">Detalles de Producción</h4>
+
+            <div className="grid grid-cols-1 gap-3">
+              {isLeche && registro.numeroProduccion && (
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-100 bg-white shadow-sm">
+                  <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                    <Hash className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Etiqueta</p>
+                    <p className="text-sm font-bold text-zinc-900 font-mono">{registro.numeroProduccion}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-100 bg-white shadow-sm">
+                <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500 font-medium">Nro. Producción</p>
-                  <p className="text-sm font-bold text-zinc-900 font-mono">{registro.numeroProduccion}</p>
+                  <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Fecha de Registro</p>
+                  <p className="text-sm font-bold text-zinc-900">{registro.fecha}</p>
                 </div>
               </div>
-            )}
-
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-zinc-100">
-              <div className="h-10 w-10 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 font-medium">Fecha de Registro</p>
-                <p className="text-sm font-bold text-zinc-900">{registro.fecha}</p>
-              </div>
             </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-zinc-100">
-              <div className="h-10 w-10 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400">
-                <User className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 font-medium">ID del Animal</p>
-                <p className="text-sm font-bold text-zinc-900">{registro.animalId}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-zinc-100 space-y-2">
-            <Button variant="ghost" className="w-full text-zinc-500" onClick={() => onOpenChange(false)}>
-              Cerrar
-            </Button>
           </div>
         </div>
       </SheetContent>

@@ -222,6 +222,14 @@ export default function NuevoAnimalPage() {
         setLoading(true);
 
         try {
+             if (formData.fechaDestete && formData.fechaDestete < formData.fechaNacimiento) {
+            setFieldErrors(prev => ({
+                ...prev,
+                fechaDestete: "La fecha de destete no puede ser anterior a la fecha de nacimiento"
+            }));
+            setLoading(false);
+            return;
+        }
             const datosParaValidar = {
                 ...formData,
                 pesoNacimiento: formData.pesoNacimiento ? Number(formData.pesoNacimiento) : undefined,
@@ -367,8 +375,7 @@ export default function NuevoAnimalPage() {
                                         setFormData({...formData, arete: e.target.value.toUpperCase()});
                                         validateField('arete', e.target.value);
                                     }}
-                                    className={fieldErrors.arete ? "border-red-500 focus-visible:ring-red-500" : ""}
-                                    required 
+                                    className={fieldErrors.arete ? "border-red-500 focus-visible:ring-red-500" : ""} 
                                     maxLength={10} 
                                 />
                                 {fieldErrors.arete && (

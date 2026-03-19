@@ -1,10 +1,9 @@
-export type RolUsuario = 'ADMINISTRADOR' | 'SUPERVISOR' | 'OPERARIO';
-export type EstadoUsuario = 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO';
+export type RolUsuario = 'Propietario' | 'Operario' | 'Veterinario';
+export type EstadoUsuario = 'Activo' | 'Invitado' | 'Bloqueado';
 
 export interface UsuarioBackend {
   usuario_id: string;
   nombre: string;
-  email: string | null;
   telefono: string;
   rol: RolUsuario;
   estado: EstadoUsuario;
@@ -16,10 +15,9 @@ export interface UsuarioBackend {
 export interface Usuario {
   id: string;
   nombre: string;
-  email: string | null;
   telefono: string;
-  rol: RolUsuario;
-  estado: EstadoUsuario;
+  rol: RolUsuario;        
+  estado: EstadoUsuario;     
   finca?: string;
   fechaCreacion: string;
   debeCambiarContrasena: boolean;
