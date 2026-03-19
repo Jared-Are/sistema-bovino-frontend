@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Sheet,
@@ -19,37 +20,43 @@ import {
   Info,
   User,
 } from "lucide-react";
-// 👇 Importamos el tipo real que definimos en lib
+
 import type { RegistroReproduccion } from "@/lib/types/reproduccion";
+import { DiagnosticoDialog } from "./diagnostico-dialog";
+import { PartoDialog } from "./parto-dialog";
 
 interface ReproduccionDetailsSheetProps {
-  // 👇 Usamos el tipo unificado para que coincida con el mapeo
   registro: RegistroReproduccion | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
 export function ReproduccionDetailsSheet({
   registro,
   isOpen,
   onOpenChange,
+  onSuccess
 }: ReproduccionDetailsSheetProps) {
+  
+  const [isDiagnosticoOpen, setIsDiagnosticoOpen] = useState(false);
+  const [isPartoOpen, setIsPartoOpen] = useState(false);
+
   if (!registro) return null;
 
   const getBadgeColor = (estado: string) => {
-    switch (estado) {
-      case "Confirmada":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
-      case "Fallida":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "Aborto":
-        return "bg-rose-100 text-rose-800 border-rose-200";
-      case "Parto Exitoso":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      default:
-        return "bg-amber-100 text-amber-800 border-amber-200";
-    }
+    const est = estado.toLowerCase();
+    if (est.includes("confirmada") || est.includes("gestante")) return "bg-emerald-100 text-emerald-800 border-emerald-200";
+    if (est.includes("fallida")) return "bg-red-100 text-red-800 border-red-200";
+    if (est.includes("aborto")) return "bg-rose-100 text-rose-800 border-rose-200";
+    if (est.includes("parto")) return "bg-blue-100 text-blue-800 border-blue-200";
+    return "bg-amber-100 text-amber-800 border-amber-200"; // En Evaluación / Programada
   };
+
+  // 👇 Variables para hacer la condición más fuerte
+  const estadoActual = registro.estado.toLowerCase();
+  const mostrarDiagnostico = estadoActual.includes("programada") || estadoActual.includes("evaluación") || estadoActual.includes("evaluacion");
+  const mostrarParto = estadoActual.includes("confirmada") || estadoActual.includes("gestante");
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -140,17 +147,62 @@ export function ReproduccionDetailsSheet({
                   {registro.arete} - {registro.nombreAnimal}
                 </p>
               </div>
-              <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                <p className="text-xs text-zinc-500 font-medium mb-1">Estado de Gestación</p>
-                <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-zinc-400" />
-                  {registro.estado}
-                </p>
+              
+              <div className="border border-zinc-200 rounded-lg p-4 bg-white flex flex-col justify-between">
+                <div>
+                  <p className="text-xs text-zinc-500 font-medium mb-1">Estado de Gestación</p>
+                  <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-500" />
+                    {registro.estado}
+                  </p>
+                </div>
+                
+                {/* 👇 Aquí aplicamos la condición fuerte para mostrar los botones */}
+                <div className="mt-4">
+                  {mostrarDiagnostico && (
+                    <Button 
+                      size="sm" 
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => setIsDiagnosticoOpen(true)}
+                    >
+                      Evaluar Preñez
+                    </Button>
+                  )}
+                  {mostrarParto && (
+                    <Button 
+                      size="sm" 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => setIsPartoOpen(true)}
+                    >
+                      Registrar Parto
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </SheetContent>
+
+      <DiagnosticoDialog 
+        isOpen={isDiagnosticoOpen} 
+        onClose={() => setIsDiagnosticoOpen(false)} 
+        montaId={registro.id} 
+        onSuccess={() => {
+          onOpenChange(false);
+          if (onSuccess) onSuccess(); 
+        }}
+      />
+
+      <PartoDialog 
+        isOpen={isPartoOpen} 
+        onClose={() => setIsPartoOpen(false)} 
+        diagnosticoId={registro.id} 
+        onSuccess={() => {
+          onOpenChange(false);
+          if (onSuccess) onSuccess();
+        }}
+      />
     </Sheet>
   );
 }

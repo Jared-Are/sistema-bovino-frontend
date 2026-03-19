@@ -1,24 +1,15 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export const reproduccionApi = {
-  // Obtener todas las montas
+  // ====== MONTAS ======
   getMontas: async (token: string) => {
     const response = await fetch(`${API_URL}/reproduccion/montas`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': `Bearer ${token}` }
     });
-
-    if (!response.ok) {
-      if (response.status === 401) throw new Error('No autorizado');
-      throw new Error('Error al cargar registros reproductivos');
-    }
     return response.json();
   },
 
-  // Crear una nueva monta
-  createMonta: async (data: { numero_monta: string; fecha_programacion: string; tipo_monta: string; animalId: number }, token: string) => {
+  createMonta: async (data: any, token: string) => {
     const response = await fetch(`${API_URL}/reproduccion/montas`, {
       method: 'POST',
       headers: {
@@ -27,16 +18,9 @@ export const reproduccionApi = {
       },
       body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      if (response.status === 401) throw new Error('No autorizado');
-      const error = await response.json();
-      throw new Error(error.message || 'Error al registrar la monta');
-    }
     return response.json();
   },
 
-  // Actualizar una monta
   updateMonta: async (id: string, data: any, token: string) => {
     const response = await fetch(`${API_URL}/reproduccion/montas/${id}`, {
       method: 'PATCH',
@@ -46,29 +30,50 @@ export const reproduccionApi = {
       },
       body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      if (response.status === 401) throw new Error('No autorizado');
-      const error = await response.json();
-      throw new Error(error.message || 'Error al actualizar registro');
-    }
     return response.json();
   },
 
-  // Eliminar una monta
   deleteMonta: async (id: string, token: string) => {
     const response = await fetch(`${API_URL}/reproduccion/montas/${id}`, {
       method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    return response.json();
+  },
+
+  // ====== DIAGNÓSTICOS ======
+  createDiagnostico: async (data: { monta_id: number; resultado: string; metodo: string; fecha_programacion: string }, token: string) => {
+    const response = await fetch(`${API_URL}/reproduccion/diagnosticos`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(data),
     });
-
+    
     if (!response.ok) {
-      if (response.status === 401) throw new Error('No autorizado');
-      throw new Error('Error al eliminar registro reproductivo');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al registrar el diagnóstico');
     }
     return response.json();
   },
+
+  // ====== PARTOS ======
+  createParto: async (data: { diagnostico_prenez_id: number; tipo_parto: string; numero_parto: string }, token: string) => {
+    const response = await fetch(`${API_URL}/reproduccion/partos`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al registrar el parto');
+    }
+    return response.json();
+  }
 };
