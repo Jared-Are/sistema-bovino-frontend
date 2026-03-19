@@ -32,7 +32,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Activity
+  Activity,
+  ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -66,6 +67,7 @@ interface AnimalDetailsSheetProps {
   animal: Animal | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  readOnly?: boolean;
 }
 
 type TratamientoReal = {
@@ -80,6 +82,7 @@ export function AnimalDetailsSheet({
   animal,
   isOpen,
   onOpenChange,
+  readOnly = false,
 }: AnimalDetailsSheetProps) {
   const [tratamientos, setTratamientos] = useState<TratamientoReal[]>([]);
   const [cargandoTratamientos, setCargandoTratamientos] = useState(false);
@@ -94,7 +97,6 @@ export function AnimalDetailsSheet({
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // 👇 CORREGIDO: Filtrar por animal_id
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/salud/tratamientos?animal_id=${animal.id}`,
         {
@@ -109,7 +111,6 @@ export function AnimalDetailsSheet({
 
       const data = await response.json();
       
-      // 👇 Asegurar que solo muestra los de este animal
       const tratamientosDelAnimal = data.filter((t: any) => 
         t.animal?.animal_id?.toString() === animal.id || 
         t.animal_id?.toString() === animal.id
@@ -141,10 +142,10 @@ export function AnimalDetailsSheet({
     'Vacía': 'bg-blue-100 text-blue-800',
     'Gestante': 'bg-purple-100 text-purple-800',    
     'Lactando': 'bg-emerald-100 text-emerald-800',   
+    'Parida': 'bg-amber-100 text-amber-800',      
     'Seca': 'bg-gray-100 text-gray-800',
     'En celo': 'bg-pink-100 text-pink-800',         
     'Inseminada': 'bg-indigo-100 text-indigo-800',   
-    'Parida': 'bg-amber-100 text-amber-800',      
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
   };
@@ -215,7 +216,7 @@ export function AnimalDetailsSheet({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent 
         side="right" 
-        className="w-full sm:w-[85%] md:w-[75%] lg:w-[60%] xl:w-[50%] max-w-4xl overflow-y-auto p-0"
+        className="w-full sm:w-[94%] md:w-[88%] lg:w-[75%] xl:w-[65%] max-w-5xl overflow-y-auto p-0"
       >
         <div className="relative">
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10">
@@ -239,64 +240,69 @@ export function AnimalDetailsSheet({
                   </div>
                 </div>
                 
-                <div className="flex gap-2 ml-4">
-                  <Link href={`/animales/${animal.id}`}>
-                    <Button size="sm" variant="outline" className="gap-2">
-                      <Pencil className="w-4 h-4" />
-                      <span className="hidden sm:inline">Editar</span>
-                    </Button>
-                  </Link>
-                  <Button 
-                    size="sm" 
-                    variant="destructive" 
-                    className="gap-2"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (confirm('¿Estás seguro de eliminar este animal?')) {
-                        try {
-                          const token = localStorage.getItem('token');
-                          if (!token) return;
-                          
-                          const response = await fetch(
-                            `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
-                            {
-                              method: 'DELETE',
-                              headers: { 'Authorization': `Bearer ${token}` }
+                {!readOnly && (
+                  <div className="flex gap-2 ml-4">
+                    <Link href={`/animales/${animal.id}`}>
+                      <Button size="sm" variant="outline" className="gap-2">
+                        <Pencil className="w-4 h-4" />
+                        <span className="hidden sm:inline">Editar</span>
+                      </Button>
+                    </Link>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      className="gap-2"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm('¿Estás seguro de eliminar este animal?')) {
+                          try {
+                            const token = localStorage.getItem('token');
+                            if (!token) return;
+                            
+                            const response = await fetch(
+                              `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
+                              {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              }
+                            );
+                            
+                            if (response.ok) {
+                              onOpenChange(false);
+                              window.location.reload();
                             }
-                          );
-                          
-                          if (response.ok) {
-                            onOpenChange(false);
-                            window.location.reload();
+                          } catch (error) {
+                            console.error('Error al eliminar:', error);
                           }
-                        } catch (error) {
-                          console.error('Error al eliminar:', error);
                         }
-                      }
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Eliminar</span>
-                  </Button>
-                </div>
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Eliminar</span>
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
-                <div className="bg-white rounded-lg p-3 border border-zinc-200">
-                  <p className="text-xs text-zinc-500 font-medium">Edad</p>
-                  <p className="text-lg font-bold text-zinc-900">{animal.edad} años</p>
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Edad</p>
+                  <p className="text-lg font-black text-zinc-900">{animal.edad} años</p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-zinc-200">
-                  <p className="text-xs text-zinc-500 font-medium">Sexo</p>
-                  <p className="text-lg font-bold text-zinc-900">{animal.sexo}</p>
+                <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Sexo</p>
+                  <p className="text-lg font-black text-zinc-900">{animal.sexo}</p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-zinc-200">
-                  <p className="text-xs text-zinc-500 font-medium">Peso Actual</p>
-                  <p className="text-lg font-bold text-zinc-900">{animal.ultimoPeso} kg</p>
+                <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Peso Actual</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-black text-zinc-900">{animal.ultimoPeso}</span>
+                    <span className="text-xs text-zinc-400 font-bold">kg</span>
+                  </div>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-zinc-200">
-                  <p className="text-xs text-zinc-500 font-medium">Lote</p>
-                  <p className="text-lg font-bold text-zinc-900">{animal.lote}</p>
+                <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Lote</p>
+                  <p className="text-base font-black text-zinc-900 leading-tight">{animal.lote}</p>
                 </div>
               </div>
 
@@ -314,15 +320,34 @@ export function AnimalDetailsSheet({
 
         <div className="p-6">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="reproduccion">Reproducción</TabsTrigger>
-              <TabsTrigger value="salud">Salud</TabsTrigger>
-              <TabsTrigger value="produccion">Producción</TabsTrigger>
+            <TabsList className="flex gap-2 mb-6 bg-transparent h-auto p-0 flex-wrap">
+              <TabsTrigger 
+                value="general" 
+                className="flex-1 py-2 px-4 rounded-lg border border-zinc-300 bg-white shadow-sm data-[state=active]:border-zinc-900 data-[state=active]:text-zinc-900 transition-all"
+              >
+                General
+              </TabsTrigger>
+              <TabsTrigger 
+                value="reproduccion"
+                className="flex-1 py-2 px-4 rounded-lg border border-zinc-300 bg-white shadow-sm data-[state=active]:border-zinc-900 data-[state=active]:text-zinc-900 transition-all"
+              >
+                Reproducción
+              </TabsTrigger>
+              <TabsTrigger 
+                value="salud"
+                className="flex-1 py-2 px-4 rounded-lg border border-zinc-300 bg-white shadow-sm data-[state=active]:border-zinc-900 data-[state=active]:text-zinc-900 transition-all"
+              >
+                Salud
+              </TabsTrigger>
+              <TabsTrigger 
+                value="produccion"
+                className="flex-1 py-2 px-4 rounded-lg border border-zinc-300 bg-white shadow-sm data-[state=active]:border-zinc-900 data-[state=active]:text-zinc-900 transition-all"
+              >
+                Producción
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="general" className="space-y-6">
-              {/* Contenido general igual */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                   <User className="w-4 h-4" /> Información Básica
@@ -443,12 +468,14 @@ export function AnimalDetailsSheet({
                   <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                     <Heart className="w-4 h-4" /> Historial de Montas
                   </h3>
-                  <Link href={`/reproduccion/nuevo?animalId=${animal.id}`}>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Registrar Monta
-                    </Button>
-                  </Link>
+                  {!readOnly && (
+                    <Link href={`/reproduccion/nuevo?animalId=${animal.id}`}>
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                        <Plus className="w-4 h-4 mr-1" />
+                        Registrar Monta
+                      </Button>
+                    </Link>
+                  )}
                 </div>
 
                 {animal.montas && animal.montas.length > 0 ? (
@@ -477,14 +504,16 @@ export function AnimalDetailsSheet({
                   <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                     <FileText className="w-4 h-4" /> Tratamientos Activos
                   </h3>
-                  <Button 
-                    size="sm" 
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    onClick={handleNuevoTratamiento}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Nuevo Tratamiento
-                  </Button>
+                  {!readOnly && (
+                    <Button 
+                      size="sm" 
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      onClick={handleNuevoTratamiento}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Nuevo Tratamiento
+                    </Button>
+                  )}
                 </div>
 
                 {cargandoTratamientos ? (

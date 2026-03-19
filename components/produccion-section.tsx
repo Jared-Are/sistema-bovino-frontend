@@ -48,6 +48,9 @@ export function ProduccionSection() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tipoActivo, setTipoActivo] = useState<TipoProduccion>('leche');
+  const [sortBy, setSortBy] = useState('fecha');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [filterDate, setFilterDate] = useState('');
 
   const cargarDatos = async () => {
     try {
@@ -110,13 +113,40 @@ export function ProduccionSection() {
   const registrosActivos = tipoActivo === 'leche' ? registrosLeche : registrosCarne;
 
   const registrosFiltrados = useMemo(() => {
-    if (!search) return registrosActivos;
-    const searchLower = search.toLowerCase();
-    return registrosActivos.filter(r =>
-      r.arete.toLowerCase().includes(searchLower) ||
-      r.nombreAnimal.toLowerCase().includes(searchLower)
-    );
-  }, [registrosActivos, search]);
+    let result = [...registrosActivos];
+
+    // Búsqueda
+    if (search) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(r =>
+        r.arete.toLowerCase().includes(searchLower) ||
+        r.nombreAnimal.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Filtro por fecha
+    if (filterDate) {
+      result = result.filter(r => r.fecha === filterDate);
+    }
+
+    // Ordenamiento
+    result.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'nombre') {
+        comparison = a.nombreAnimal.localeCompare(b.nombreAnimal);
+      } else if (sortBy === 'cantidad') {
+        const valA = a.tipo === 'leche' ? (a.cantidad || 0) : (a.pesoCanal || 0);
+        const valB = b.tipo === 'leche' ? (b.cantidad || 0) : (b.pesoCanal || 0);
+        comparison = valA - valB;
+      } else {
+        // Por defecto fecha
+        comparison = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+      }
+      return sortDir === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [registrosActivos, search, sortBy, sortDir, filterDate]);
 
   const registroSeleccionado = registrosActivos.find(r => r.id === selectedId) || null;
 
@@ -140,9 +170,7 @@ export function ProduccionSection() {
               >
                 {cargando ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <RefreshCcw className="w-4 h-4 mr-2" />
-                )}
+                ) : null}
                 Actualizar
               </Button>
 
@@ -176,7 +204,15 @@ export function ProduccionSection() {
       </div>
 
       <div className="p-8">
-        <ProduccionFilters onSearchChange={setSearch} />
+        <ProduccionFilters 
+          onSearchChange={setSearch}
+          onSortChange={setSortBy}
+          onDirectionChange={setSortDir}
+          onDateChange={setFilterDate}
+          sortValue={sortBy}
+          directionValue={sortDir}
+          dateValue={filterDate}
+        />
 
         {cargando ? (
           <div className="flex items-center justify-center h-64">

@@ -32,7 +32,14 @@ const carneSchema = z.object({
     peso_canal: z.coerce.number().min(10, "Mínimo 10 kg").max(600, "Máximo 600 kg"),
 });
 
-type AnimalSimple = { animal_id: number; arete: string; nombre: string; };
+type AnimalSimple = { 
+    animal_id: number; 
+    arete: string; 
+    nombre: string;
+    sexo: string;
+    estado_reproductivo: string;
+    fecha_nacimiento: string;
+};
 
 export default function NuevaProduccionPage() {
     const router = useRouter();
@@ -41,6 +48,7 @@ export default function NuevaProduccionPage() {
     const [loading, setLoading] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
     const [animales, setAnimales] = useState<AnimalSimple[]>([]);
+    const [maxId, setMaxId] = useState(0);
 
     const [tipo, setTipo] = useState<'leche' | 'carne'>('leche');
     const [formData, setFormData] = useState({
@@ -49,6 +57,36 @@ export default function NuevaProduccionPage() {
         cantidad: "",
         peso_canal: "",
     });
+
+    const calculateAge = (birthDateStr: string) => {
+        const birthDate = new Date(birthDateStr);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
+    const filteredAnimales = animales.filter(a => {
+        if (tipo === 'leche') {
+            return a.sexo === 'Hembra' && (
+                a.estado_reproductivo?.toLowerCase() === 'lactando' || 
+                a.estado_reproductivo?.toLowerCase() === 'parida'
+            );
+        } else {
+            // Carne: Macho >= 6 años
+            return a.sexo === 'Macho' && calculateAge(a.fecha_nacimiento) >= 6;
+        }
+    });
+
+    // Reset animalId if tipo changes and current animal is no longer in filtered list
+    useEffect(() => {
+        if (formData.animalId && !filteredAnimales.some(a => a.animal_id.toString() === formData.animalId)) {
+            setFormData(prev => ({ ...prev, animalId: "" }));
+        }
+    }, [tipo, filteredAnimales]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -71,6 +109,24 @@ export default function NuevaProduccionPage() {
                     const data = await animalesRes.json();
                     setAnimales(Array.isArray(data) ? data : data.data || []);
                 }
+
+                // Fetch productions to find max ID for the tag
+                const [lecheRes, carneRes] = await Promise.all([
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion/leche`, { headers }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion/carne`, { headers })
+                ]);
+
+                if (lecheRes.ok && carneRes.ok) {
+                    const leche = await lecheRes.json();
+                    const carne = await carneRes.json();
+                    const allIds = [
+                        ...(Array.isArray(leche) ? leche : []).map((r: any) => r.id),
+                        ...(Array.isArray(carne) ? carne : []).map((r: any) => r.id)
+                    ];
+                    if (allIds.length > 0) {
+                        setMaxId(Math.max(...allIds));
+                    }
+                }
             } catch (err) {
                 toast({ title: "Error", description: "No se pudieron cargar los animales.", variant: "destructive" });
             } finally {
@@ -79,6 +135,23 @@ export default function NuevaProduccionPage() {
         };
         fetchData();
     }, [router, toast]);
+
+    useEffect(() => {
+        if (tipo === 'leche' && formData.animalId) {
+            const date = new Date();
+            const ddmmyy = date.getDate().toString().padStart(2, '0') + 
+                           (date.getMonth() + 1).toString().padStart(2, '0') + 
+                           date.getFullYear().toString().slice(-2);
+            
+            // Usamos el ID correlativo de la tabla + 1
+            const nuevoNumero = `L-${ddmmyy}-${(maxId + 1).toString().padStart(3, '0')}`;
+            
+            setFormData(prev => ({
+                ...prev,
+                numero_produccion: nuevoNumero
+            }));
+        }
+    }, [tipo, formData.animalId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -175,12 +248,18 @@ export default function NuevaProduccionPage() {
                         {/* Animal */}
                         <div>
                             <Label>Animal *</Label>
-                            <Select value={formData.animalId} onValueChange={(v) => setFormData({ ...formData, animalId: v })}>
-                                <SelectTrigger><SelectValue placeholder="Selecciona un animal" /></SelectTrigger>
+                            <Select 
+                                value={formData.animalId} 
+                                onValueChange={(v) => setFormData({ ...formData, animalId: v })}
+                                disabled={filteredAnimales.length === 0}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder={filteredAnimales.length === 0 ? "No hay animales aptos" : "Selecciona un animal"} />
+                                </SelectTrigger>
                                 <SelectContent>
-                                    {animales.map((a) => (
+                                    {filteredAnimales.map((a) => (
                                         <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                            {a.arete} - {a.nombre || 'Sin nombre'}
+                                            {a.arete} - {a.nombre || 'Sin nombre'} ({a.sexo})
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -195,10 +274,10 @@ export default function NuevaProduccionPage() {
                                     <div className="relative">
                                         <Hash className="absolute left-2 top-2.5 h-4 w-4 text-blue-400" />
                                         <Input
-                                            className="pl-8"
-                                            placeholder="Ej: L-2026-001"
+                                            className="pl-8 bg-zinc-50 border-zinc-200 text-zinc-500 font-mono"
+                                            readOnly
+                                            placeholder="Generando..."
                                             value={formData.numero_produccion}
-                                            onChange={(e) => setFormData({ ...formData, numero_produccion: e.target.value })}
                                         />
                                     </div>
                                 </div>
