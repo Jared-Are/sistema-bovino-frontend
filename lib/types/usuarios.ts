@@ -1,5 +1,5 @@
-export type RolUsuario = 'ADMINISTRADOR' | 'SUPERVISOR' | 'OPERARIO';
-export type EstadoUsuario = 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO';
+export type RolUsuario = 'PROPIETARIO' | 'OPERARIO' | 'VETERINARIO';
+export type EstadoUsuario = 'ACTIVO' | 'INVITADO' | 'BLOQUEADO';
 
 export interface UsuarioBackend {
   usuario_id: string;
@@ -18,8 +18,8 @@ export interface Usuario {
   nombre: string;
   email: string | null;
   telefono: string;
-  rol: RolUsuario;
-  estado: EstadoUsuario;
+  rol: RolUsuario;        
+  estado: EstadoUsuario;     
   finca?: string;
   fechaCreacion: string;
   debeCambiarContrasena: boolean;

@@ -26,11 +26,8 @@ const usuarioSchema = z.object({
     nombre: z.string().min(2, "El nombre es muy corto").max(150, "El nombre es muy largo"),
     telefono: z.string().min(10, "Teléfono inválido").max(20),
     email: z.string().email("Email inválido").optional(),
-    rol: z.enum(['ADMINISTRADOR', 'SUPERVISOR', 'OPERARIO']),
-    fincaId: z.string().optional(),
+    rol: z.enum(['Propietario', 'Veterinario', 'Operario']),
 });
-
-type Finca = { finca_id: number; nombre: string; };
 
 export default function NuevoUsuarioPage() {
     const router = useRouter();
@@ -45,8 +42,7 @@ export default function NuevoUsuarioPage() {
         nombre: "",
         telefono: "",
         email: "",
-        rol: "OPERARIO" as "ADMINISTRADOR" | "SUPERVISOR" | "OPERARIO",
-        fincaId: "",
+        rol: "Operario" as "Propietario" | "Veterinario" | "Operario",
     });
 
     useEffect(() => {
@@ -71,9 +67,6 @@ export default function NuevoUsuarioPage() {
                     'Content-Type': 'application/json'
                 };
 
-                const fincasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/fincas`, { headers });
-                if (fincasRes.ok) setFincas(await fincasRes.json());
-
             } catch (err) {
                 toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
             } finally {
@@ -95,8 +88,7 @@ export default function NuevoUsuarioPage() {
                 telefono: valid.telefono,
                 email: valid.email || null,
                 rol: valid.rol,
-                finca_id: valid.fincaId ? Number(valid.fincaId) : null,
-                debe_cambiar_contrasena: true, // Siempre forzar cambio en nuevo usuario
+                debe_cambiar_contrasena: true,
             };
 
             const token = localStorage.getItem('token');
@@ -189,52 +181,32 @@ export default function NuevoUsuarioPage() {
                             <div>
                                 <Label>Rol *</Label>
                                 <Select value={formData.rol} 
-                                    onValueChange={(v: "ADMINISTRADOR" | "SUPERVISOR" | "OPERARIO") => setFormData({...formData, rol: v})}>
+                                    onValueChange={(v: "PROPIETARIO" | "OPERARIO" | "VETERINARIO") => setFormData({...formData, rol: v})}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="PROPIETARIO">
+                                            <div className="flex items-center gap-2">
+                                                <Shield className="w-4 h-4" />
+                                                Propietario
+                                            </div>
+                                        </SelectItem>
                                         <SelectItem value="OPERARIO">
                                             <div className="flex items-center gap-2">
-                                                <User className="w-4 h-4" />
+                                                <Shield className="w-4 h-4" />
                                                 Operario
                                             </div>
                                         </SelectItem>
-                                        <SelectItem value="SUPERVISOR">
+                                        <SelectItem value="VETERINARIO">
                                             <div className="flex items-center gap-2">
                                                 <Shield className="w-4 h-4" />
-                                                Supervisor
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="ADMINISTRADOR">
-                                            <div className="flex items-center gap-2">
-                                                <Shield className="w-4 h-4" />
-                                                Administrador
+                                                Veterinario
                                             </div>
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-
-                        <div>
-                            <Label>Finca</Label>
-                            <Select value={formData.fincaId} onValueChange={(v) => setFormData({...formData, fincaId: v})}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Opcional" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="sin-finca">Sin finca</SelectItem>
-                                    {fincas.map((f) => (
-                                        <SelectItem key={f.finca_id} value={f.finca_id.toString()}>
-                                            <div className="flex items-center gap-2">
-                                                <MapPin className="w-4 h-4" />
-                                                {f.nombre}
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         <div className="flex gap-3 pt-4">
