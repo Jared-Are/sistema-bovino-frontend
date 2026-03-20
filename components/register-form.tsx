@@ -54,6 +54,12 @@ export default function RegisterForm() {
           fincaId: fincaData.finca_id,
         }),
       });
+      const contentType = usuarioRes.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await usuarioRes.text();
+        console.error('Respuesta no JSON:', text);
+        throw new Error('Error del servidor. Intenta de nuevo.');
+      }
 
       const usuarioData = await usuarioRes.json();
       if (!usuarioRes.ok) throw new Error(usuarioData.message || 'Error al crear usuario');

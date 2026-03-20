@@ -1,208 +1,249 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-    ArrowLeft, 
-    Save, 
-    Loader2,
-    User,
-    Shield,
-    Phone,
-    Mail,
-    MapPin
-} from "lucide-react";
-import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
-import { usuariosApi } from "@/lib/api/usuarios";
+  ArrowLeft, 
+  Save, 
+  Loader2,
+  AlertCircle,
+  Phone,
+  Mail,
+  User
+} from 'lucide-react';
+import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
 
 const usuarioSchema = z.object({
-    nombre: z.string().min(2, "El nombre es muy corto").max(150, "El nombre es muy largo"),
-    telefono: z.string().min(10, "Teléfono inválido").max(20),
-    rol: z.enum(['Propietario', 'Veterinario', 'Operario']),
+  nombre: z.string().min(2, "El nombre es muy corto"),
+  telefono: z.string().min(8, "Teléfono inválido"),
+  email: z.string().email("Email inválido"),
+  rol: z.enum(['operario', 'veterinario']),
 });
 
+type FormData = {
+  nombre: string;
+  telefono: string;
+  email: string;
+  rol: 'operario' | 'veterinario';
+};
+
 export default function NuevoUsuarioPage() {
-    const router = useRouter();
-    const { toast } = useToast();
-    
-    const [loading, setLoading] = useState(false);
-    const [dataLoading, setDataLoading] = useState(true);
-    
-    const [fincas, setFincas] = useState<Finca[]>([]);
-    
-    const [formData, setFormData] = useState({
-        nombre: "",
-        telefono: "",
-        rol: "Operario" as "Propietario" | "Veterinario" | "Operario",
-    });
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [formData, setFormData] = useState<FormData>({
+    nombre: '',
+    telefono: '',
+    email: '',
+    rol: 'operario',
+  });
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            router.push('/login');
-        }
-    }, [router]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            setDataLoading(true);
-            try {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    router.push('/login');
-                    return;
-                }
-
-                const headers = { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                };
-
-            } catch (err) {
-                toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
-            } finally {
-                setDataLoading(false);
-            }
-        };
-        fetchData();
-    }, [router, toast]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-
-        try {
-            const valid = usuarioSchema.parse(formData);
-
-            const payload = {
-                nombre: valid.nombre,
-                telefono: valid.telefono,
-                rol: valid.rol,
-                debe_cambiar_contrasena: true,
-            };
-
-            const token = localStorage.getItem('token');
-            if (!token) {
-                router.push('/login');
-                return;
-            }
-
-            const response = await usuariosApi.create(payload, token);
-
-            toast({ 
-                title: "¡Usuario Creado!", 
-                description: `Usuario ${valid.nombre} registrado correctamente.`,
-                className: "bg-purple-600 text-white" 
-            });
-            
-            router.push("/usuarios");
-
-        } catch (err: any) {
-            const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
-            toast({ title: "Error", description: mensaje, variant: "destructive" });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (dataLoading) {
-        return (
-            <div className="min-h-screen bg-zinc-50 p-8 flex justify-center items-center">
-                <Loader2 className="h-10 w-10 animate-spin text-purple-600" />
-            </div>
-        );
+  const validateField = (field: keyof FormData, value: string) => {
+    try {
+      const fieldSchema = z.object({ [field]: usuarioSchema.shape[field] });
+      fieldSchema.parse({ [field]: value });
+      setFieldErrors(prev => ({ ...prev, [field]: undefined }));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const message = error.errors[0]?.message || 'Campo inválido';
+        setFieldErrors(prev => ({ ...prev, [field]: message }));
+      }
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-zinc-50 p-8">
-            <Link href="/usuarios">
-                <Button variant="ghost" size="sm" className="mb-6">
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Volver
-                </Button>
-            </Link>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const valid = usuarioSchema.parse(formData);
+      setLoading(true);
+      setFieldErrors({});
 
-            <Card className="max-w-2xl mx-auto">
-                <CardHeader>
-                    <CardTitle>Crear Nuevo Usuario</CardTitle>
-                    <CardDescription>Campos con * son obligatorios</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Datos básicos */}
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="nombre">Nombre Completo *</Label>
-                                <Input 
-                                    id="nombre" 
-                                    value={formData.nombre} 
-                                    onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-                                    required 
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="telefono">Teléfono *</Label>
-                                <div className="relative">
-                                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <Input 
-                                        id="telefono" 
-                                        className="pl-10"
-                                        value={formData.telefono}
-                                        onChange={(e) => setFormData({...formData, telefono: e.target.value})}
-                                        required 
-                                    />
-                                </div>
-                            </div>
-                        </div>
+      const token = localStorage.getItem('token');
 
-                            <div>
-                                <Label>Rol *</Label>
-                                <Select value={formData.rol} 
-                                    onValueChange={(v: "PROPIETARIO" | "OPERARIO" | "VETERINARIO") => setFormData({...formData, rol: v})}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="PROPIETARIO">
-                                            <div className="flex items-center gap-2">
-                                                <Shield className="w-4 h-4" />
-                                                Propietario
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="OPERARIO">
-                                            <div className="flex items-center gap-2">
-                                                <Shield className="w-4 h-4" />
-                                                Operario
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="VETERINARIO">
-                                            <div className="flex items-center gap-2">
-                                                <Shield className="w-4 h-4" />
-                                                Veterinario
-                                            </div>
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+      const payload = {
+        nombre: valid.nombre,
+        telefono: valid.telefono,
+        email: valid.email,
+        rol: valid.rol,
+      };
 
-                        <div className="flex gap-3 pt-4">
-                            <Button type="submit" disabled={loading} className="bg-purple-600 hover:bg-purple-700">
-                                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                {loading ? "Creando..." : "Crear Usuario"}
-                            </Button>
-                            <Link href="/usuarios">
-                                <Button type="button" variant="outline">Cancelar</Button>
-                            </Link>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
-        </div>
-    );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.message?.toLowerCase().includes('email')) {
+          setFieldErrors(prev => ({ ...prev, email: 'Este email ya está registrado' }));
+        } else if (data.message?.toLowerCase().includes('teléfono')) {
+          setFieldErrors(prev => ({ ...prev, telefono: 'Este teléfono ya está registrado' }));
+        } else {
+          setFieldErrors(prev => ({ ...prev, nombre: data.message || 'Error al crear usuario' }));
+        }
+        throw new Error(data.message);
+      }
+      
+      toast({ 
+        title: "¡Usuario Creado!", 
+        description: `Se enviaron las credenciales a ${valid.email}`,
+        className: "bg-green-600 text-white"
+      });
+      
+      router.push('/usuarios');
+
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        const errors: Record<string, string> = {};
+        err.errors.forEach(e => {
+          if (e.path[0]) errors[e.path[0].toString()] = e.message;
+        });
+        setFieldErrors(errors);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-50 p-8">
+      <Link href="/usuarios">
+        <Button variant="ghost" size="sm" className="mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" /> Volver a Usuarios
+        </Button>
+      </Link>
+
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Nuevo Usuario</CardTitle>
+          <CardDescription>Registra un nuevo usuario en la finca</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nombre">Nombre Completo *</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="nombre"
+                  className={`pl-10 ${fieldErrors.nombre ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  value={formData.nombre}
+                  onChange={(e) => {
+                    setFormData({...formData, nombre: e.target.value});
+                    validateField('nombre', e.target.value);
+                  }}
+                  placeholder="Ej: Juan Pérez"
+                />
+              </div>
+              {fieldErrors.nombre && (
+                <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.nombre}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="telefono">Teléfono *</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="telefono"
+                  className={`pl-10 ${fieldErrors.telefono ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  value={formData.telefono}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setFormData({...formData, telefono: val});
+                    validateField('telefono', val);
+                  }}
+                  placeholder="88880000"
+                  maxLength={15}
+                />
+              </div>
+              {fieldErrors.telefono && (
+                <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.telefono}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  className={`pl-10 ${fieldErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  value={formData.email}
+                  onChange={(e) => {
+                    setFormData({...formData, email: e.target.value});
+                    validateField('email', e.target.value);
+                  }}
+                  placeholder="usuario@ejemplo.com"
+                />
+              </div>
+              {fieldErrors.email && (
+                <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.email}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Rol *</Label>
+              <Select 
+                value={formData.rol} 
+                onValueChange={(v: 'operario' | 'veterinario') => {
+                  setFormData({...formData, rol: v});
+                  validateField('rol', v);
+                }}
+              >
+                <SelectTrigger className={fieldErrors.rol ? 'border-red-500 focus-visible:ring-red-500' : ''}>
+                  <SelectValue placeholder="Selecciona un rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operario">Operario</SelectItem>
+                  <SelectItem value="veterinario">Veterinario</SelectItem>
+                </SelectContent>
+              </Select>
+              {fieldErrors.rol && (
+                <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.rol}
+                </p>
+              )}
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {loading ? "Creando..." : "Crear Usuario"}
+              </Button>
+              <Link href="/usuarios">
+                <Button type="button" variant="outline">Cancelar</Button>
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
