@@ -37,6 +37,8 @@ function DiagnosticoForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        
+        console.log("🚀 Iniciando envío de diagnóstico...");
 
         try {
             const token = localStorage.getItem('token');
@@ -47,25 +49,53 @@ function DiagnosticoForm() {
                 fecha_programacion: formData.fecha_programacion
             };
 
+            console.log("📦 Payload a enviar al backend:", payload);
+
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/diagnosticos`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                },
                 body: JSON.stringify(payload)
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || "Error al registrar el diagnóstico");
+            console.log("📡 Status del backend:", res.status);
+
+            // Blindaje: Verificamos si la respuesta realmente es JSON
+            const isJson = res.headers.get("content-type")?.includes("application/json");
+            let data;
+            
+            if (isJson) {
+                data = await res.json();
+            } else {
+                // Si el backend colapsó y mandó HTML, lo atrapamos aquí
+                const errorText = await res.text();
+                console.error("❌ El backend devolvió texto/HTML en lugar de JSON:", errorText);
+                throw new Error("El servidor falló de forma inesperada. Revisa la consola.");
             }
+
+            if (!res.ok) {
+                throw new Error(data.message || "Error al registrar el diagnóstico");
+            }
+
+            console.log("✅ ¡Diagnóstico guardado con éxito!");
 
             toast({ 
                 title: "¡Diagnóstico Registrado!", 
                 description: `La vaca ahora está ${formData.resultado === 'Positivo' ? 'Gestante' : 'Vacía'}.`, 
                 className: "bg-emerald-600 text-white" 
             });
+            
             router.push("/reproduccion");
+            
         } catch (err: any) {
-            toast({ title: "Error", description: err.message, variant: "destructive" });
+            console.error("🚨 Error capturado en el catch:", err);
+            toast({ 
+                title: "Error", 
+                description: err.message, 
+                variant: "destructive" 
+            });
         } finally {
             setLoading(false);
         }
@@ -81,7 +111,8 @@ function DiagnosticoForm() {
                 <CardDescription>Registra el resultado de la evaluación para el servicio seleccionado.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Le quitamos el onSubmit al form para que no interfiera */}
+                <form className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Método de Evaluación</Label>
@@ -116,7 +147,14 @@ function DiagnosticoForm() {
 
                     <div className="flex justify-end gap-3 pt-4 border-t">
                         <Link href="/reproduccion"><Button type="button" variant="outline">Cancelar</Button></Link>
-                        <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        
+                        {/* Botón blindado con el onClick directo */}
+                        <Button 
+                            type="button" 
+                            onClick={handleSubmit} 
+                            disabled={loading} 
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
                             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                             Confirmar Diagnóstico
                         </Button>
