@@ -7,12 +7,12 @@ import { Plus, Loader2, RefreshCcw, Droplets, Beef } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { produccionApi } from '@/lib/api/produccion';
 import type { RegistroProduccion, LecheBackend, CarneBackend, TipoProduccion } from '@/lib/types/produccion';
-import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 import { ProduccionCards } from './produccion-cards';
 import { ProduccionFilters } from './produccion-filters';
 import { ProduccionDetailsSheet } from './produccion-details-sheet';
+import { ProduccionReportDialog } from './produccion-report-dialog';
 
 // Mapear leche del backend al frontend
 const mapLecheToFrontend = (b: LecheBackend): RegistroProduccion => ({
@@ -28,20 +28,35 @@ const mapLecheToFrontend = (b: LecheBackend): RegistroProduccion => ({
 });
 
 // Mapear carne del backend al frontend
-const mapCarneToFrontend = (b: CarneBackend): RegistroProduccion => ({
-  id: b.id.toString(),
-  tipo: 'carne',
-  animalId: b.animal?.animal_id?.toString() || '',
-  arete: b.animal?.arete || 'N/A',
-  nombreAnimal: b.animal?.nombre || 'Sin nombre',
-  pesoCanal: b.peso_canal,
-  fecha: b.fecha_creacion?.split('T')[0] || '',
-  animal: b.animal,
-});
+const mapCarneToFrontend = (b: CarneBackend): RegistroProduccion => {
+  const dateStr = b.fecha_creacion?.split('T')[0] || '';
+  let numeroProduccion = b.numero_produccion || (b as any).numeroProduccion || (b as any).etiqueta;
+
+  // Si no viene del backend, reconstruirla: C-DDMMYY-AnimalID (3 dígitos)
+  if (!numeroProduccion && b.fecha_creacion && b.animal?.animal_id) {
+    const d = new Date(b.fecha_creacion);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear().toString().slice(2);
+    const ddmmyy = `${day}${month}${year}`;
+    numeroProduccion = `C-${ddmmyy}-${b.animal.animal_id.toString().padStart(3, '0')}`;
+  }
+
+  return {
+    id: b.id.toString(),
+    tipo: 'carne',
+    animalId: b.animal?.animal_id?.toString() || '',
+    arete: b.animal?.arete || 'N/A',
+    nombreAnimal: b.animal?.nombre || 'Sin nombre',
+    pesoCanal: b.peso_canal,
+    numeroProduccion: numeroProduccion,
+    fecha: dateStr,
+    animal: b.animal,
+  };
+};
 
 export function ProduccionSection() {
   const router = useRouter();
-  const { toast } = useToast();
   const [registrosLeche, setRegistrosLeche] = useState<RegistroProduccion[]>([]);
   const [registrosCarne, setRegistrosCarne] = useState<RegistroProduccion[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -78,11 +93,6 @@ export function ProduccionSection() {
     } catch (err: any) {
       console.error('Error:', err);
       setError(err.message || 'Error al cargar producción');
-      toast({
-        title: 'Error',
-        description: err.message || 'Error al cargar registros de producción',
-        variant: 'destructive',
-      });
     } finally {
       setCargando(false);
     }
@@ -100,11 +110,10 @@ export function ProduccionSection() {
         await produccionApi.deleteCarne(id, token);
       }
 
-      toast({ title: 'Registro eliminado', className: 'bg-green-600 text-white' });
       setIsSheetOpen(false);
       cargarDatos();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      console.error('Error al eliminar:', err);
     }
   };
 
@@ -176,6 +185,12 @@ export function ProduccionSection() {
                 Actualizar
               </Button>
 
+              <ProduccionReportDialog 
+                registrosLeche={registrosLeche}
+                registrosCarne={registrosCarne}
+                tipoInicial={tipoActivo} 
+              />
+
               <Link href="/produccion/nuevo">
                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
                   <Plus className="w-4 h-4" />
@@ -206,7 +221,7 @@ export function ProduccionSection() {
       </div>
 
       <div className="p-8">
-        <ProduccionFilters 
+        <ProduccionFilters
           onSearchChange={setSearch}
           onSortChange={setSortBy}
           onDirectionChange={setSortDir}
