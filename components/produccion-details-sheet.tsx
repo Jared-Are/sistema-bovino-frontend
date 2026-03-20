@@ -88,9 +88,9 @@ export function ProduccionDetailsSheet({
             <h4 className="text-sm font-semibold text-zinc-900 px-1">Detalles de Producción</h4>
 
             <div className="grid grid-cols-1 gap-3">
-              {isLeche && registro.numeroProduccion && (
+              {registro.numeroProduccion && (
                 <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-100 bg-white shadow-sm">
-                  <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${isLeche ? 'bg-blue-50 text-blue-500' : 'bg-amber-50 text-amber-500'}`}>
                     <Hash className="w-5 h-5" />
                   </div>
                   <div>

@@ -14,6 +14,7 @@ export interface LecheBackend {
 export interface CarneBackend {
   id: number;
   fincaId: number;
+  numero_produccion?: string;
   peso_canal: number;
   fecha_creacion: string;
   animal?: any;
