@@ -17,7 +17,6 @@ import {
     Hash
 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
 import { produccionApi } from "@/lib/api/produccion";
 import { z } from "zod";
 
@@ -44,7 +43,6 @@ type AnimalSimple = {
 
 export default function NuevaProduccionPage() {
     const router = useRouter();
-    const { toast } = useToast();
 
     const [loading, setLoading] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
@@ -129,13 +127,13 @@ export default function NuevaProduccionPage() {
                     }
                 }
             } catch (err) {
-                toast({ title: "Error", description: "No se pudieron cargar los animales.", variant: "destructive" });
+                console.error("No se pudieron cargar los animales.");
             } finally {
                 setDataLoading(false);
             }
         };
         fetchData();
-    }, [router, toast]);
+    }, [router]);
 
     useEffect(() => {
         if (formData.animalId) {
@@ -190,17 +188,11 @@ export default function NuevaProduccionPage() {
                 }, token);
             }
 
-            toast({
-                title: "¡Registro Creado!",
-                description: `Producción de ${tipo} registrada correctamente.`,
-                className: "bg-green-600 text-white"
-            });
-
             router.push("/produccion");
 
         } catch (err: any) {
             const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
-            toast({ title: "Error", description: mensaje, variant: "destructive" });
+            console.error(mensaje);
         } finally {
             setLoading(false);
         }
@@ -253,22 +245,43 @@ export default function NuevaProduccionPage() {
                         {/* Animal */}
                         <div>
                             <Label>Animal *</Label>
-                            <Select
-                                value={formData.animalId}
-                                onValueChange={(v) => setFormData({ ...formData, animalId: v })}
-                                disabled={filteredAnimales.length === 0}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={filteredAnimales.length === 0 ? "No hay animales aptos" : "Selecciona un animal"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {filteredAnimales.map((a) => (
-                                        <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                            {a.nombre || 'Sin nombre'}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="relative">
+                                <Select
+                                    value={formData.animalId}
+                                    onValueChange={(v) => {
+                                        setFormData({ ...formData, animalId: v });
+                                        // Limpiar error al seleccionar
+                                        const hiddenInput = document.getElementById('animal-id-hidden') as HTMLInputElement;
+                                        if (hiddenInput) {
+                                            hiddenInput.setCustomValidity("");
+                                        }
+                                    }}
+                                    disabled={filteredAnimales.length === 0}
+                                >
+                                    <SelectTrigger className={!formData.animalId ? "border-amber-500 bg-amber-50/20" : ""}>
+                                        <SelectValue placeholder={filteredAnimales.length === 0 ? "No hay animales aptos" : "Selecciona un animal *"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {filteredAnimales.map((a) => (
+                                            <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
+                                                {a.nombre || 'Sin nombre'}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {/* Hidden input for native validation bubble */}
+                                <input
+                                    id="animal-id-hidden"
+                                    type="text"
+                                    value={formData.animalId}
+                                    required
+                                    className="absolute opacity-0 pointer-events-none top-0 left-0 w-full h-full"
+                                    onInvalid={(e) => {
+                                        (e.target as HTMLInputElement).setCustomValidity("Por favor, selecciona un animal primero");
+                                    }}
+                                    onChange={() => {}} // dummy to avoid react warning
+                                />
+                            </div>
                         </div>
 
                         {/* Campos condicionales */}
@@ -293,6 +306,7 @@ export default function NuevaProduccionPage() {
                                         <Input
                                             type="number" step="0.1" min="0.1" max="60" className="pl-8"
                                             placeholder="Ej: 12.5"
+                                            required
                                             value={formData.cantidad}
                                             onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
                                         />
@@ -323,6 +337,7 @@ export default function NuevaProduccionPage() {
                                             min="10"
                                             className="pl-8"
                                             placeholder="Ej: 250"
+                                            required
                                             value={formData.peso_canal}
                                             onChange={(e) => {
                                                 const val = e.target.value;

@@ -27,8 +27,8 @@ export function ProduccionCards({ registros, onSelect }: ProduccionCardsProps) {
               <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 font-mono text-xs">
                 {reg.arete}
               </Badge>
-              {isLeche && reg.numeroProduccion && (
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-xs font-mono">
+              {reg.numeroProduccion && (
+                <Badge variant="secondary" className={`text-xs font-mono ${isLeche ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
                   {reg.numeroProduccion}
                 </Badge>
               )}
