@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Loader2, Calendar, Activity, ClipboardList, Stethoscope } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Calendar, Activity, Stethoscope, Syringe } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,14 +26,22 @@ export default function EditarReproduccionPage() {
     const [toros, setToros] = useState<AnimalSimple[]>([]);
     
     const [formData, setFormData] = useState({
-        animalId: "",
-        tipoServicio: "Monta Natural",
-        fechaServicio: "",
-        toroId: "sin-toro",
-        codigoPajilla: "",
-        observaciones: "",
+        numero_monta: "", // 👈 ¡Esto era lo que faltaba para que el backend nos dejara guardar!
+        animal_hembra_id: "",
+        tipo_monta: "Monta Natural",
+        fecha_programacion: "",
+        animal_macho_id: "sin-toro",
+        codigo_pajilla: "", 
         estado: "En Evaluación"
     });
+
+    const normalizarEstado = (estadoRaw: string) => {
+        if (!estadoRaw) return "En Evaluación";
+        const est = estadoRaw.toLowerCase();
+        if (est.includes("confirmada")) return "Confirmada";
+        if (est.includes("fallida")) return "Fallida";
+        return "En Evaluación"; 
+    };
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -43,10 +51,9 @@ export default function EditarReproduccionPage() {
             try {
                 const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-                // Traemos los animales y el registro actual al mismo tiempo
                 const [animalesRes, registroRes] = await Promise.all([
                     fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales?limit=200`, { headers }),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/${id}`, { headers })
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/montas/${id}`, { headers }) 
                 ]);
                 
                 if (animalesRes.ok) {
@@ -57,15 +64,18 @@ export default function EditarReproduccionPage() {
 
                 if (registroRes.ok) {
                     const registro = await registroRes.json();
+                    
                     setFormData({
-                        animalId: registro.animal?.animal_id?.toString() || "",
-                        tipoServicio: registro.tipo_servicio || "Monta Natural",
-                        fechaServicio: registro.fecha_servicio?.split('T')[0] || "",
-                        toroId: registro.toro?.animal_id?.toString() || "sin-toro",
-                        codigoPajilla: registro.codigo_pajilla || "",
-                        observaciones: registro.observaciones || "",
-                        estado: registro.estado || "En Evaluación"
+                        numero_monta: registro.numero_monta || "", // 👈 Lo recuperamos de la base de datos
+                        animal_hembra_id: registro.hembra ? String(registro.hembra.animal_id) : "",
+                        tipo_monta: registro.tipo_monta || "Monta Natural",
+                        fecha_programacion: registro.fecha_programacion ? registro.fecha_programacion.split('T')[0] : "",
+                        animal_macho_id: registro.macho ? String(registro.macho.animal_id) : "sin-toro",
+                        codigo_pajilla: registro.codigo_pajilla || "", 
+                        estado: normalizarEstado(registro.estado)
                     });
+                } else {
+                    toast({ title: "Error", description: "No se encontró la monta en el servidor.", variant: "destructive" });
                 }
             } catch (err) {
                 toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
@@ -82,25 +92,28 @@ export default function EditarReproduccionPage() {
 
         try {
             const payload = {
-                animal_id: Number(formData.animalId),
-                tipo_servicio: formData.tipoServicio,
-                fecha_servicio: formData.fechaServicio,
-                toro_id: formData.tipoServicio === "Monta Natural" && formData.toroId !== "sin-toro" ? Number(formData.toroId) : null,
-                codigo_pajilla: formData.tipoServicio === "Inseminación Artificial" ? formData.codigoPajilla : null,
-                observaciones: formData.observaciones || null,
+                numero_monta: formData.numero_monta, // 👈 Se lo enviamos al guardia de seguridad del backend
+                animal_hembra_id: formData.animal_hembra_id ? Number(formData.animal_hembra_id) : null,
+                tipo_monta: formData.tipo_monta,
+                fecha_programacion: formData.fecha_programacion || null,
+                animal_macho_id: formData.tipo_monta === "Monta Natural" && formData.animal_macho_id !== "sin-toro" ? Number(formData.animal_macho_id) : null,
+                codigo_pajilla: formData.tipo_monta === "Inseminación Artificial" ? formData.codigo_pajilla : null,
                 estado: formData.estado
             };
 
             const token = localStorage.getItem('token');
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/${id}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/montas/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
 
-            if (!response.ok) throw new Error("Error al actualizar");
+            if (!response.ok) {
+                 const errData = await response.json();
+                 throw new Error(errData.message || "Error al actualizar la monta en el servidor.");
+            }
 
-            toast({ title: "¡Actualizado!", description: "Cambios guardados correctamente.", className: "bg-green-600 text-white" });
+            toast({ title: "¡Actualizado!", description: "Cambios guardados correctamente.", className: "bg-emerald-600 text-white" });
             router.push("/reproduccion");
 
         } catch (err: any) {
@@ -115,17 +128,17 @@ export default function EditarReproduccionPage() {
     return (
         <div className="min-h-screen bg-zinc-50 p-8">
             <Link href="/reproduccion"><Button variant="ghost" size="sm" className="mb-6"><ArrowLeft className="h-4 w-4 mr-2" /> Volver</Button></Link>
-            <Card className="max-w-3xl mx-auto">
-                <CardHeader>
+            <Card className="max-w-3xl mx-auto border-emerald-100 shadow-sm">
+                <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 pb-6">
                     <div className="flex items-center gap-2"><Activity className="h-6 w-6 text-emerald-600" /><CardTitle>Editar Servicio Reproductivo</CardTitle></div>
-                    <CardDescription>Actualiza el estado de gestación o corrige datos de la monta/inseminación.</CardDescription>
+                    <CardDescription>Corrige datos de la monta o inseminación.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Vaca o Novilla (Hembra) *</Label>
-                                <Select value={formData.animalId} onValueChange={(v) => setFormData({...formData, animalId: v})}>
+                                <Label>Hembra Receptora *</Label>
+                                <Select value={formData.animal_hembra_id} onValueChange={(v) => setFormData({...formData, animal_hembra_id: v})}>
                                     <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
                                     <SelectContent>
                                         {vacas.map((v) => <SelectItem key={v.animal_id} value={v.animal_id.toString()}>{v.arete} - {v.nombre || 'Sin nombre'}</SelectItem>)}
@@ -133,15 +146,13 @@ export default function EditarReproduccionPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Estado de Gestación</Label>
+                                <Label>Estado del Servicio</Label>
                                 <Select value={formData.estado} onValueChange={(v) => setFormData({...formData, estado: v})}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="En Evaluación">En Evaluación</SelectItem>
                                         <SelectItem value="Confirmada">Preñez Confirmada</SelectItem>
                                         <SelectItem value="Fallida">Fallida / Vacía</SelectItem>
-                                        <SelectItem value="Aborto">Aborto</SelectItem>
-                                        <SelectItem value="Parto Exitoso">Parto Exitoso</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -149,8 +160,8 @@ export default function EditarReproduccionPage() {
 
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Tipo de Servicio *</Label>
-                                <Select value={formData.tipoServicio} onValueChange={(v) => setFormData({...formData, tipoServicio: v})}>
+                                <Label>Tipo de Monta *</Label>
+                                <Select value={formData.tipo_monta} onValueChange={(v) => setFormData({...formData, tipo_monta: v})}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Monta Natural">Monta Natural</SelectItem>
@@ -159,45 +170,43 @@ export default function EditarReproduccionPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Fecha del Servicio *</Label>
+                                <Label>Fecha de la Monta</Label>
                                 <div className="relative">
                                     <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input type="date" className="pl-8" value={formData.fechaServicio} onChange={(e) => setFormData({...formData, fechaServicio: e.target.value})} required />
+                                    <Input type="date" className="pl-8" value={formData.fecha_programacion} onChange={(e) => setFormData({...formData, fecha_programacion: e.target.value})} />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-lg border">
-                            {formData.tipoServicio === "Monta Natural" ? (
-                                <div>
-                                    <Label className="flex items-center gap-2 mb-2"><Stethoscope className="h-4 w-4" /> Semental (Toro)</Label>
-                                    <Select value={formData.toroId} onValueChange={(v) => setFormData({...formData, toroId: v})}>
-                                        <SelectTrigger><SelectValue placeholder="Selecciona el toro" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="sin-toro">Toro externo / Desconocido</SelectItem>
-                                            {toros.map((t) => <SelectItem key={t.animal_id} value={t.animal_id.toString()}>{t.arete} - {t.nombre || 'Sin nombre'}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            ) : (
-                                <div>
-                                    <Label className="flex items-center gap-2 mb-2"><Stethoscope className="h-4 w-4" /> Código de Pajilla (Semen)</Label>
-                                    <Input placeholder="Ej. BR-1045" value={formData.codigoPajilla} onChange={(e) => setFormData({...formData, codigoPajilla: e.target.value})} />
-                                </div>
-                            )}
-                        </div>
+                        {formData.tipo_monta === "Monta Natural" ? (
+                            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                                <Label className="flex items-center gap-2 mb-2"><Stethoscope className="h-4 w-4 text-emerald-600" /> Semental (Toro)</Label>
+                                <Select value={formData.animal_macho_id} onValueChange={(v) => setFormData({...formData, animal_macho_id: v})}>
+                                    <SelectTrigger className="bg-white"><SelectValue placeholder="Selecciona el toro" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="sin-toro">Toro externo / Desconocido</SelectItem>
+                                        {toros.map((t) => <SelectItem key={t.animal_id} value={t.animal_id.toString()}>{t.arete} - {t.nombre || 'Sin nombre'}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        ) : (
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <Label className="flex items-center gap-2 mb-2"><Syringe className="h-4 w-4 text-blue-600" /> Código de Pajilla (Semen)</Label>
+                                <Input 
+                                    placeholder="Ej. BR-1045" 
+                                    className="bg-white"
+                                    value={formData.codigo_pajilla} 
+                                    onChange={(e) => setFormData({...formData, codigo_pajilla: e.target.value})} 
+                                />
+                            </div>
+                        )}
 
-                        <div>
-                            <Label className="flex items-center gap-2 mb-2"><ClipboardList className="h-4 w-4" /> Observaciones</Label>
-                            <Input placeholder="Notas adicionales..." value={formData.observaciones} onChange={(e) => setFormData({...formData, observaciones: e.target.value})} />
-                        </div>
-
-                        <div className="flex gap-3 pt-4 border-t">
-                            <Button type="submit" disabled={loading} className="bg-emerald-600">
-                                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                {loading ? "Guardando..." : "Guardar Cambios"}
-                            </Button>
+                        <div className="flex justify-end gap-3 pt-4 border-t">
                             <Link href="/reproduccion"><Button type="button" variant="outline">Cancelar</Button></Link>
+                            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                                Guardar Cambios
+                            </Button>
                         </div>
                     </form>
                 </CardContent>

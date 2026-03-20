@@ -60,6 +60,20 @@ export const reproduccionApi = {
   },
 
   // ====== PARTOS ======
+async registrarParto(datos: any, token: string) {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/partos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(datos)
+    });
+    if (!response.ok) throw new Error("Error al registrar el parto");
+    return await response.json();
+  },
+
+
   createParto: async (data: { diagnostico_prenez_id: number; tipo_parto: string; numero_parto: string }, token: string) => {
     const response = await fetch(`${API_URL}/reproduccion/partos`, {
       method: 'POST',

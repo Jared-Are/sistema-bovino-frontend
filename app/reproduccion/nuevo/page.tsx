@@ -13,18 +13,20 @@ import {
     Loader2,
     Calendar,
     Activity,
-    Stethoscope
+    Stethoscope,
+    Syringe // 👈 Importamos la jeringa para la I.A.
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-// Validación de los datos de reproducción
+// 👇 1. Actualizamos Zod para que acepte el código de pajilla
 const reproduccionSchema = z.object({
     animalId: z.string().min(1, "Selecciona la vaca o novilla."),
     tipoServicio: z.enum(['Monta Natural', 'Inseminación Artificial']),
     fechaServicio: z.string().min(1, "La fecha del servicio es requerida."),
-    toroId: z.string().optional()
+    toroId: z.string().optional(),
+    codigo_pajilla: z.string().optional() // Permitimos la pajilla
 });
 
 type AnimalSimple = { animal_id: number; arete: string; nombre: string; sexo: string; };
@@ -36,18 +38,18 @@ export default function NuevoRegistroReproduccionPage() {
     const [loading, setLoading] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
     
-    // Listas filtradas para los dropdowns
     const [vacas, setVacas] = useState<AnimalSimple[]>([]);
     const [toros, setToros] = useState<AnimalSimple[]>([]);
     
+    // 👇 2. Agregamos codigo_pajilla al estado inicial
     const [formData, setFormData] = useState({
         animalId: "",
         tipoServicio: "Monta Natural",
         fechaServicio: new Date().toISOString().split('T')[0],
         toroId: "",
+        codigo_pajilla: "" 
     });
 
-    // Proteger la ruta y cargar datos
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -84,25 +86,25 @@ export default function NuevoRegistroReproduccionPage() {
         setLoading(true);
 
         try {
-            // 1. Validamos con Zod
             const valid = reproduccionSchema.parse(formData);
+            const codigoAutomatico = `M-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-          // 2. Generamos el código automático
-            const codigoAutomatico = `MONTA-${Math.floor(Math.random() * 10000)}`;
-
-            // 3. Armamos el paquete definitivo
+            // 👇 3. Armamos el paquete EXACTAMENTE como lo exige el Backend blindado
             const payload: any = {
                 numero_monta: codigoAutomatico,
                 tipo_monta: valid.tipoServicio,
-                estado: "En Evaluación",
-                fecha_programacion: new Date(valid.fechaServicio).toISOString(),
-                animalHembraId: Number(valid.animalId) // Mandamos el ID exacto que pide el jefe
+                estado: "En Evaluación", // Estado inicial fijo
+                fecha_programacion: valid.fechaServicio,
+                animal_hembra_id: Number(valid.animalId) // 👈 Usamos animal_hembra_id con guiones bajos
             };
 
-            // Solo mandamos el macho si es Monta Natural
+            // Evaluamos si es Toro o Inseminación
             if (valid.tipoServicio === "Monta Natural" && valid.toroId && valid.toroId !== "sin-toro") {
-                payload.animalMachoId = Number(valid.toroId);
+                payload.animal_macho_id = Number(valid.toroId);
+            } else if (valid.tipoServicio === "Inseminación Artificial" && valid.codigo_pajilla) {
+                payload.codigo_pajilla = valid.codigo_pajilla; // 👈 Mandamos la pajilla
             }
+
             const token = localStorage.getItem('token');
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/montas`, {
                 method: 'POST',
@@ -125,19 +127,15 @@ export default function NuevoRegistroReproduccionPage() {
             toast({ 
                 title: "¡Registro Exitoso!", 
                 description: `El servicio ${codigoAutomatico} se guardó correctamente.`,
-                className: "bg-green-600 text-white" 
+                className: "bg-emerald-600 text-white" 
             });
             
-            router.push("/reproduccion"); // Regresa a la lista principal
+            router.push("/reproduccion"); 
 
-       } catch (err: any) {
+        } catch (err: any) {
             console.error("ERROR CAPTURADO:", err);
             const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
-            
-            // El salvavidas tradicional que nunca falla:
-            alert("⚠️ DETENIDO POR: " + mensaje);
-            
-            toast({ title: "Atención", description: mensaje, variant: "destructive" });
+            toast({ title: "Error al guardar", description: mensaje, variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -159,18 +157,17 @@ export default function NuevoRegistroReproduccionPage() {
                 </Button>
             </Link>
 
-            <Card className="max-w-3xl mx-auto">
-                <CardHeader>
+            <Card className="max-w-3xl mx-auto border-emerald-100 shadow-sm">
+                <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 pb-6">
                     <div className="flex items-center gap-2">
                         <Activity className="h-6 w-6 text-emerald-600" />
                         <CardTitle>Registrar Servicio Reproductivo</CardTitle>
                     </div>
                     <CardDescription>Anota una nueva monta o inseminación para llevar el control de gestación.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         
-                        {/* Selección de la Madre */}
                         <div className="space-y-2">
                             <Label>Vaca o Novilla (Hembra) *</Label>
                             <Select value={formData.animalId} onValueChange={(v) => setFormData({...formData, animalId: v})}>
@@ -185,12 +182,11 @@ export default function NuevoRegistroReproduccionPage() {
                             </Select>
                         </div>
 
-                        {/* Detalles del Servicio */}
                         <div className="grid md:grid-cols-2 gap-4">
-                            <div>
+                            <div className="space-y-2">
                                 <Label>Tipo de Servicio *</Label>
                                 <Select value={formData.tipoServicio} 
-                                    onValueChange={(v: "Monta Natural" | "Inseminación Artificial") => setFormData({...formData, tipoServicio: v})}>
+                                    onValueChange={(v: "Monta Natural" | "Inseminación Artificial") => setFormData({...formData, tipoServicio: v, toroId: "", codigo_pajilla: ""})}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Monta Natural">Monta Natural</SelectItem>
@@ -198,7 +194,7 @@ export default function NuevoRegistroReproduccionPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
+                            <div className="space-y-2">
                                 <Label>Fecha del Servicio *</Label>
                                 <div className="relative">
                                     <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
@@ -209,14 +205,14 @@ export default function NuevoRegistroReproduccionPage() {
                             </div>
                         </div>
 
-                        {/* Selección del Toro (Solo si es Monta Natural) */}
-                        {formData.tipoServicio === "Monta Natural" && (
-                            <div className="bg-gray-50 p-4 rounded-lg border">
+                        {/* 👇 4. RENDERIZADO CONDICIONAL: Toro o Pajilla */}
+                        {formData.tipoServicio === "Monta Natural" ? (
+                            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
                                 <Label className="flex items-center gap-2 mb-2">
-                                    <Stethoscope className="h-4 w-4" /> Semental (Toro)
+                                    <Stethoscope className="h-4 w-4 text-emerald-600" /> Semental (Toro)
                                 </Label>
                                 <Select value={formData.toroId} onValueChange={(v) => setFormData({...formData, toroId: v})}>
-                                    <SelectTrigger><SelectValue placeholder="Selecciona el toro (Opcional)" /></SelectTrigger>
+                                    <SelectTrigger className="bg-white"><SelectValue placeholder="Selecciona el toro (Opcional)" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="sin-toro">Toro externo / Desconocido</SelectItem>
                                         {toros.map((t) => (
@@ -227,17 +223,28 @@ export default function NuevoRegistroReproduccionPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        ) : (
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <Label className="flex items-center gap-2 mb-2">
+                                    <Syringe className="h-4 w-4 text-blue-600" /> Código de Pajilla (Semen)
+                                </Label>
+                                <Input 
+                                    placeholder="Ej. BR-1045" 
+                                    className="bg-white"
+                                    value={formData.codigo_pajilla} 
+                                    onChange={(e) => setFormData({...formData, codigo_pajilla: e.target.value})} 
+                                />
+                            </div>
                         )}
 
-                        {/* Botones */}
-                        <div className="flex gap-3 pt-4 border-t">
-                            <Button type="submit" disabled={loading} className="bg-emerald-600">
-                                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                {loading ? "Guardando..." : "Guardar Registro"}
-                            </Button>
+                        <div className="flex justify-end gap-3 pt-4 border-t">
                             <Link href="/reproduccion">
                                 <Button type="button" variant="outline">Cancelar</Button>
                             </Link>
+                            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                                {loading ? "Guardando..." : "Registrar Servicio"}
+                            </Button>
                         </div>
                     </form>
                 </CardContent>
