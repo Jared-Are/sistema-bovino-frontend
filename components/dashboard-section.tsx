@@ -19,8 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UniversalReportDialog } from './universal-report-dialog';
-import { ProduccionReportDialog } from './produccion-report-dialog';
-import { produccionApi } from '@/lib/api/produccion';
 import type { RegistroProduccion, LecheBackend, CarneBackend } from '@/lib/types/produccion';
 import {
   AreaChart,
@@ -262,6 +260,33 @@ export function DashboardSection() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Registro de Reportes Unificado */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm mb-6">
+                <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900">
+                         PANEL DE REPORTES
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                    </h2>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button 
+                        onClick={() => setReportModalOpen(true)}
+                        className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-[11px] h-10 gap-2 px-6 rounded-xl shadow-sm"
+                    >
+                        <FileText className="w-4 h-4" />
+                        Generar Reporte
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={fetchData} 
+                        className="flex-1 sm:flex-none bg-zinc-50 border-zinc-200 hover:bg-zinc-100 text-zinc-700 gap-2 text-[11px] font-bold uppercase tracking-wider h-10 px-6 rounded-xl transition-all"
+                    >
+                        Actualizar
+                    </Button>
+                </div>
+            </div>
+
             {/* KPI Header */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard 
@@ -294,34 +319,6 @@ export function DashboardSection() {
                 />
             </div>
 
-            {/* Dashboard Controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-end gap-4 p-4 bg-zinc-900 rounded-3xl text-white shadow-xl shadow-zinc-200/50">
-                <div>
-                    <h2 className="text-xl font-black flex items-center gap-2">
-                         PANEL DE CONTROL
-                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    </h2>
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Sincronización en tiempo real activa</p>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button 
-                        onClick={() => setReportModalOpen(true)}
-                        className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-[10px] h-10 gap-2 px-6 rounded-2xl"
-                    >
-                        <FileText className="w-3 h-3" />
-                        Generar Reporte
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={fetchData} 
-                        className="flex-1 sm:flex-none bg-white/5 border-white/10 hover:bg-white/10 text-white gap-2 text-[10px] font-black uppercase tracking-widest h-10 px-6 rounded-2xl transition-all"
-                    >
-                        <RefreshCw className={cn("w-3 h-3", loading && "animate-spin")} />
-                        Refrescar
-                    </Button>
-                </div>
-            </div>
 
             {/* Charts Section */}
             <Tabs defaultValue="overview" className="space-y-6">
