@@ -7,9 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Stethoscope, Loader2, Save, Calendar } from "lucide-react";
+import { ArrowLeft, Stethoscope, Loader2, Save, Calendar, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+// ESQUEMA ZOD
+const diagnosticoSchema = z.object({
+    metodo: z.enum(["Palpación", "Ecografía", "Observación"]),
+    resultado: z.enum(["Positivo", "Negativo"]),
+    fecha_programacion: z.string().min(1, "La fecha de evaluación es obligatoria.")
+});
 
 function DiagnosticoForm() {
     const router = useRouter();
@@ -18,13 +26,14 @@ function DiagnosticoForm() {
     const { toast } = useToast();
     
     const [loading, setLoading] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    
     const [formData, setFormData] = useState({
-        metodo: "Palpación",
-        resultado: "Positivo",
+        metodo: "Palpación" as "Palpación" | "Ecografía" | "Observación",
+        resultado: "Positivo" as "Positivo" | "Negativo",
         fecha_programacion: new Date().toISOString().split('T')[0]
     });
 
-    // Si el usuario entró a la página sin un ID de monta, no lo dejamos avanzar
     if (!montaId) {
         return (
             <div className="p-8 text-center">
@@ -34,22 +43,33 @@ function DiagnosticoForm() {
         );
     }
 
+    const validateField = (field: keyof typeof formData, value: any) => {
+        try {
+            const fieldSchema = diagnosticoSchema.shape[field as keyof typeof diagnosticoSchema.shape];
+            if (fieldSchema) fieldSchema.parse(value);
+            setFieldErrors(prev => ({ ...prev, [field]: "" }));
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                const message = error.errors[0]?.message || "Campo inválido";
+                setFieldErrors(prev => ({ ...prev, [field]: message }));
+            }
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFieldErrors({});
         setLoading(true);
-        
-        console.log("🚀 Iniciando envío de diagnóstico...");
 
         try {
+            const valid = diagnosticoSchema.parse(formData);
             const token = localStorage.getItem('token');
             const payload = {
                 montaId: Number(montaId),
-                metodo: formData.metodo,
-                resultado: formData.resultado,
-                fecha_programacion: formData.fecha_programacion
+                metodo: valid.metodo,
+                resultado: valid.resultado,
+                fecha_programacion: valid.fecha_programacion
             };
-
-            console.log("📦 Payload a enviar al backend:", payload);
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/diagnosticos`, {
                 method: 'POST',
@@ -60,26 +80,18 @@ function DiagnosticoForm() {
                 body: JSON.stringify(payload)
             });
 
-            console.log("📡 Status del backend:", res.status);
-
-            // Blindaje: Verificamos si la respuesta realmente es JSON
             const isJson = res.headers.get("content-type")?.includes("application/json");
             let data;
-            
             if (isJson) {
                 data = await res.json();
             } else {
-                // Si el backend colapsó y mandó HTML, lo atrapamos aquí
                 const errorText = await res.text();
-                console.error("❌ El backend devolvió texto/HTML en lugar de JSON:", errorText);
                 throw new Error("El servidor falló de forma inesperada. Revisa la consola.");
             }
 
             if (!res.ok) {
                 throw new Error(data.message || "Error al registrar el diagnóstico");
             }
-
-            console.log("✅ ¡Diagnóstico guardado con éxito!");
 
             toast({ 
                 title: "¡Diagnóstico Registrado!", 
@@ -90,12 +102,15 @@ function DiagnosticoForm() {
             router.push("/reproduccion");
             
         } catch (err: any) {
-            console.error("🚨 Error capturado en el catch:", err);
-            toast({ 
-                title: "Error", 
-                description: err.message, 
-                variant: "destructive" 
-            });
+            if (err instanceof z.ZodError) {
+                const errors: Record<string, string> = {};
+                err.errors.forEach(e => {
+                    if (e.path[0]) errors[e.path[0].toString()] = e.message;
+                });
+                setFieldErrors(errors);
+            } else {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
         } finally {
             setLoading(false);
         }
@@ -111,12 +126,11 @@ function DiagnosticoForm() {
                 <CardDescription>Registra el resultado de la evaluación para el servicio seleccionado.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-                {/* Le quitamos el onSubmit al form para que no interfiera */}
-                <form className="space-y-6">
+                <form className="space-y-6" onSubmit={handleSubmit}>
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Método de Evaluación</Label>
-                            <Select value={formData.metodo} onValueChange={(v) => setFormData({...formData, metodo: v})}>
+                            <Select value={formData.metodo} onValueChange={(v: any) => setFormData({...formData, metodo: v})}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Palpación">Palpación Rectal</SelectItem>
@@ -126,17 +140,25 @@ function DiagnosticoForm() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Fecha de Evaluación</Label>
+                            <Label>Fecha de Evaluación *</Label>
                             <div className="relative">
                                 <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                <Input type="date" className="pl-8" value={formData.fecha_programacion} onChange={(e) => setFormData({...formData, fecha_programacion: e.target.value})} required />
+                                <Input type="date" className={`pl-8 ${fieldErrors.fecha_programacion ? "border-red-500 focus-visible:ring-red-500" : ""}`} 
+                                    value={formData.fecha_programacion} 
+                                    onChange={(e) => {
+                                        setFormData({...formData, fecha_programacion: e.target.value});
+                                        validateField('fecha_programacion', e.target.value);
+                                    }} 
+                                    required 
+                                />
                             </div>
+                            {fieldErrors.fecha_programacion && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>{fieldErrors.fecha_programacion}</p>}
                         </div>
                     </div>
 
                     <div className="space-y-2 p-4 bg-zinc-50 border border-zinc-200 rounded-lg">
                         <Label className="text-md font-bold text-zinc-800">Resultado Final</Label>
-                        <Select value={formData.resultado} onValueChange={(v) => setFormData({...formData, resultado: v})}>
+                        <Select value={formData.resultado} onValueChange={(v: any) => setFormData({...formData, resultado: v})}>
                             <SelectTrigger className="h-12 text-lg font-bold"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Positivo" className="text-emerald-600 font-bold">Positivo (Preñada)</SelectItem>
@@ -146,12 +168,12 @@ function DiagnosticoForm() {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t">
-                        <Link href="/reproduccion"><Button type="button" variant="outline">Cancelar</Button></Link>
+                        <Link href="/reproduccion">
+                            <Button type="button" variant="outline">Cancelar</Button>
+                        </Link>
                         
-                        {/* Botón blindado con el onClick directo */}
                         <Button 
-                            type="button" 
-                            onClick={handleSubmit} 
+                            type="submit" 
                             disabled={loading} 
                             className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
@@ -165,7 +187,7 @@ function DiagnosticoForm() {
     );
 }
 
-// Envolvemos el componente que usa useSearchParams en un Suspense (Requisito de Next.js)
+// Envolvemos el componente que usa useSearchParams en un Suspense
 export default function DiagnosticoPage() {
     return (
         <div className="min-h-screen bg-zinc-50 p-8">
