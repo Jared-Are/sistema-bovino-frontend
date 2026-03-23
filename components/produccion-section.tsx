@@ -12,7 +12,6 @@ import Link from 'next/link';
 import { ProduccionCards } from './produccion-cards';
 import { ProduccionFilters } from './produccion-filters';
 import { ProduccionDetailsSheet } from './produccion-details-sheet';
-import { ProduccionReportDialog } from './produccion-report-dialog';
 
 // Mapear leche del backend al frontend
 const mapLecheToFrontend = (b: LecheBackend): RegistroProduccion => ({
@@ -185,12 +184,6 @@ export function ProduccionSection() {
                 Actualizar
               </Button>
 
-              <ProduccionReportDialog 
-                registrosLeche={registrosLeche}
-                registrosCarne={registrosCarne}
-                tipoInicial={tipoActivo} 
-              />
-
               <Link href="/produccion/nuevo">
                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
                   <Plus className="w-4 h-4" />
@@ -275,7 +268,6 @@ export function ProduccionSection() {
         registro={registroSeleccionado}
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-        onDelete={handleDelete}
       />
     </div>
   );

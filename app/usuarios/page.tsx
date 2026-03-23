@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Toaster } from '@/components/ui/toaster';
+import Modal from '@/components/ui/modal';
 
 type Usuario = {
   usuario_id: string;
@@ -43,6 +45,10 @@ export default function UsuariosPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [rolEditando, setRolEditando] = useState<'PROPIETARIO' | 'VETERINARIO' | 'OPERARIO' | null>(null);
   const [usuarioActual, setUsuarioActual] = useState<{ usuario_id: string; rol: string } | null>(null);
+  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [usuarioToDelete, setUsuarioToDelete] = useState<Usuario | null>(null);
 
   useEffect(() => {
     const usuarioStr = localStorage.getItem('usuario');
@@ -95,23 +101,28 @@ export default function UsuariosPage() {
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDelete = async (id: string, nombre: string, rol: string) => {
-    if (rol === 'PROPIETARIO') {
+  const handleDeleteClick = (usuario: Usuario) => {
+    if (usuario.rol === 'PROPIETARIO') {
       toast({ 
-        title: "No se puede eliminar", 
+        title: "⚠️ No se puede eliminar", 
         description: "El propietario no puede ser eliminado",
         variant: "destructive" 
       });
       return;
     }
+    setUsuarioToDelete(usuario);
+    setModalOpen(true);
+  };
 
-    if (!confirm(`¿Eliminar usuario ${nombre}?`)) return;
+  const handleDelete = async () => {
+    if (!usuarioToDelete) return;
     
+    setDeleting(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios/${usuarioToDelete.usuario_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -121,10 +132,23 @@ export default function UsuariosPage() {
 
       if (!response.ok) throw new Error('Error al eliminar');
       
-      setUsuarios(usuarios.filter(u => u.usuario_id !== id));
-      toast({ title: "Usuario eliminado" });
+      setUsuarios(usuarios.filter(u => u.usuario_id !== usuarioToDelete.usuario_id));
+      toast({ 
+        title: "✅ Usuario eliminado", 
+        description: `${usuarioToDelete.nombre} ha sido eliminado`,
+        duration: 3000,
+      });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "❌ Error", 
+        description: error.message, 
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setModalOpen(false);
+      setUsuarioToDelete(null);
     }
   };
 
@@ -160,12 +184,12 @@ export default function UsuariosPage() {
       ));
 
       toast({ 
-        title: "Rol actualizado", 
-        description: `El rol ha sido cambiado a ${rolEditando}`,
-        className: "bg-green-600 text-white"
+        title: "✅ Rol actualizado", 
+        description: `El rol ha sido cambiado a ${getRolLabel(rolEditando)}`,
+        duration: 3000,
       });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
     } finally {
       setEditandoId(null);
       setRolEditando(null);
@@ -393,7 +417,7 @@ export default function UsuariosPage() {
                                 variant="ghost" 
                                 size="icon"
                                 className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                onClick={() => handleDelete(usuario.usuario_id, usuario.nombre, usuario.rol)}
+                                onClick={() => handleDeleteClick(usuario)}
                                 title="Eliminar"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -410,6 +434,20 @@ export default function UsuariosPage() {
           )}
         </CardContent>
       </Card>
+      
+      <Modal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title="Eliminar Usuario"
+        description={`¿Está seguro de eliminar al usuario "${usuarioToDelete?.nombre}"? Esta acción no se puede deshacer.`}
+        variant="destructive"
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
+      
+      <Toaster />
     </div>
   );
 }

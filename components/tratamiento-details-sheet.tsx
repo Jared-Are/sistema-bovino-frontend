@@ -21,12 +21,18 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  User,
+  Hash
 } from 'lucide-react';
 import Link from 'next/link';
+import Modal from "./ui/modal";
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 type Tratamiento = {
   id: number;
+  numero_tratamiento?: string;
   tipo_tratamiento?: { id: number; nombre: string };
   animal?: { animal_id: number; arete: string; nombre: string };
   estado: string;
@@ -48,6 +54,10 @@ export function TratamientoDetailsSheet({
   onOpenChange,
   onDelete,
 }: TratamientoDetailsSheetProps) {
+  const { toast } = useToast();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   if (!tratamiento) return null;
 
   const getEstadoColor = (estado: string) => {
@@ -95,8 +105,7 @@ export function TratamientoDetailsSheet({
   };
 
   const handleDelete = async () => {
-    if (!confirm('¿Estás seguro de eliminar este tratamiento?')) return;
-    
+    setDeleting(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -111,11 +120,24 @@ export function TratamientoDetailsSheet({
 
       if (!response.ok) throw new Error('Error al eliminar');
       
+      toast({
+        title: "✅ Tratamiento eliminado",
+        description: "El tratamiento se eliminó exitosamente",
+        duration: 3000,
+      });
+      
       onOpenChange(false);
       if (onDelete) onDelete();
-      window.location.reload();
     } catch (error) {
-      console.error('Error al eliminar:', error);
+      toast({
+        title: "❌ Error",
+        description: "No se pudo eliminar el tratamiento",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setModalOpen(false);
     }
   };
 
@@ -123,7 +145,7 @@ export function TratamientoDetailsSheet({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent 
         side="right" 
-        className="w-full sm:w-[85%] md:w-[75%] lg:w-[60%] xl:w-[50%] max-w-4xl overflow-y-auto p-0"
+        className="w-full sm:w-[94%] md:w-[88%] lg:w-[75%] xl:w-[65%] max-w-5xl overflow-y-auto p-0"
       >
         <div className="relative">
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10">
@@ -132,11 +154,22 @@ export function TratamientoDetailsSheet({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     {getIcono(tratamiento.tipo_tratamiento?.nombre)}
-                    <SheetTitle className="text-2xl font-bold text-zinc-900">
+                    <SheetTitle className="text-3xl font-bold text-zinc-900">
                       {tratamiento.tipo_tratamiento?.nombre || 'Tratamiento'}
                     </SheetTitle>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {tratamiento.numero_tratamiento && (
+                      <Badge variant="outline" className="bg-white border-zinc-300 font-mono">
+                        <Hash className="w-3 h-3 mr-1" />
+                        {tratamiento.numero_tratamiento}
+                      </Badge>
+                    )}
+                    {tratamiento.animal && (
+                      <Badge className="bg-emerald-600 text-white">
+                        {tratamiento.animal.arete} - {tratamiento.animal.nombre}
+                      </Badge>
+                    )}
                     <Badge className={getEstadoColor(tratamiento.estado)}>
                       <span className="flex items-center gap-1">
                         {getEstadoIcon(tratamiento.estado)}
@@ -148,7 +181,7 @@ export function TratamientoDetailsSheet({
                 
                 <div className="flex gap-2 ml-4">
                   <Link href={`/salud/${tratamiento.id}`}>
-                    <Button size="sm" variant="outline" className="gap-2">
+                    <Button size="sm" variant="outline" className="gap-2 bg-white">
                       <Pencil className="w-4 h-4" />
                       <span className="hidden sm:inline">Editar</span>
                     </Button>
@@ -156,12 +189,27 @@ export function TratamientoDetailsSheet({
                   <Button 
                     size="sm" 
                     variant="destructive" 
-                    className="gap-2"
-                    onClick={handleDelete}
+                    className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => setModalOpen(true)}
+                    disabled={deleting}
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Eliminar</span>
+                    <span className="hidden sm:inline">{deleting ? "Borrando..." : "Eliminar"}</span>
                   </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Tipo</p>
+                  <div className="flex items-center gap-1 mt-1 text-zinc-900 font-bold text-lg">
+                    {getIcono(tratamiento.tipo_tratamiento?.nombre)}
+                    {tratamiento.tipo_tratamiento?.nombre || 'Sin tipo'}
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
+                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Fecha de Aplicación</p>
+                  <p className="text-lg font-black text-zinc-900 mt-1">{formatFecha(tratamiento.fecha)}</p>
                 </div>
               </div>
             </SheetHeader>
@@ -170,12 +218,32 @@ export function TratamientoDetailsSheet({
 
         <div className="p-6">
           <Tabs defaultValue="detalle" className="w-full">
+            <TabsList className="flex gap-2 mb-6 bg-transparent h-auto p-0 flex-wrap">
+              <TabsTrigger 
+                value="detalle" 
+                className="flex-1 py-2 px-4 rounded-lg border border-zinc-300 bg-white shadow-sm data-[state=active]:border-zinc-900 data-[state=active]:text-zinc-900 transition-all"
+              >
+                Detalles del Tratamiento
+              </TabsTrigger>
+            </TabsList>
 
             <TabsContent value="detalle" className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
+                  <Hash className="w-4 h-4" /> Número de Tratamiento
+                </h3>
+
+                <div className="border border-zinc-200 rounded-lg p-4 bg-white">
+                  <p className="text-lg font-bold text-zinc-900 font-mono">
+                    {tratamiento.numero_tratamiento || 'No asignado'}
+                  </p>
+                </div>
+              </div>
+
               {/* Información del Animal */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <Activity className="w-4 h-4" /> Animal
+                  <User className="w-4 h-4" /> Animal
                 </h3>
 
                 <div className="border border-zinc-200 rounded-lg p-4 bg-white">
@@ -251,10 +319,19 @@ export function TratamientoDetailsSheet({
                 </div>
               </div>
             </TabsContent>
-
-           
           </Tabs>
         </div>
+        
+        <Modal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          title="Eliminar Tratamiento"
+          description={`¿Está seguro de eliminar este tratamiento "${tratamiento.tipo_tratamiento?.nombre}" del animal "${tratamiento.animal?.nombre}"? Esta acción no se puede deshacer.`}       
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          loading={deleting}
+          onConfirm={handleDelete}
+        />
       </SheetContent>
     </Sheet>
   );

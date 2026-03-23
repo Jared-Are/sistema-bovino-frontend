@@ -8,12 +8,12 @@ import {
   Stethoscope,
   TrendingUp,
   Users,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Menu,
   MapPin,
+  Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { CambiarContrasenaModal } from './cambiar-contrasena-modal';
 
 type UserRole = 'propietario' | 'veterinario' | 'operario';
 
@@ -47,14 +48,12 @@ const menuConfig: Record<UserRole, Array<{ id: string; label: string; icon: any;
     { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
     { id: 'produccion', label: 'Producción', icon: TrendingUp, href: '/produccion' },
     { id: 'usuarios', label: 'Usuarios', icon: Users, href: '/usuarios' },
-    { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion' },
   ],
   veterinario: [
     { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/' },
     { id: 'animales', label: 'Animales', icon: Beef, href: '/animales' },
     { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
     { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
-    { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion' },
   ],
   operario: [
     { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/' },
@@ -62,7 +61,6 @@ const menuConfig: Record<UserRole, Array<{ id: string; label: string; icon: any;
     { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
     { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
     { id: 'produccion', label: 'Producción', icon: TrendingUp, href: '/produccion' },
-    { id: 'configuracion', label: 'Configuración', icon: Settings, href: '/configuracion' },
   ],
 };
 
@@ -72,7 +70,7 @@ const roleNames: Record<UserRole, string> = {
   operario: 'Operario',
 };
 
-function MobileSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogout, menuItems }: any) {
+function MobileSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogout, onOpenModal, menuItems }: any) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -99,6 +97,7 @@ function MobileSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogo
           fincaNombre={fincaNombre}
           fincaUbicacion={fincaUbicacion}
           onLogout={onLogout}
+          onOpenModal={onOpenModal}
           menuItems={menuItems}
         />
       </SheetContent>
@@ -113,6 +112,7 @@ function SidebarContent({
   fincaNombre,
   fincaUbicacion,
   onLogout, 
+  onOpenModal,
   menuItems, 
   onToggle, 
   showToggle = false 
@@ -177,22 +177,28 @@ function SidebarContent({
 
       <div className="border-t border-zinc-200">
         <div className="px-3 py-3">
-          <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenModal}
+            className="w-full flex items-center gap-2 hover:bg-zinc-50 rounded-lg transition-all duration-200 p-2"
+          >
             <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
               <span className="text-sm font-semibold text-emerald-700">
                 {userName?.charAt(0).toUpperCase() || 'U'}
               </span>
             </div>
             <div className={cn(
-              "whitespace-nowrap transition-all duration-200 overflow-hidden",
+              "whitespace-nowrap transition-all duration-200 overflow-hidden text-left flex-1",
               isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0"
             )}>
               <p className="text-sm font-medium text-zinc-900">{userName || 'Usuario'}</p>
               <p className="text-xs text-zinc-500">{roleNames[rolValido] || userRole}</p>
             </div>
-          </div>
+            {isExpanded && (
+              <Lock className="h-4 w-4 text-zinc-400 shrink-0" />
+            )}
+          </button>
         </div>
-        {/* Logout Button */}
+        
         <div className="p-2">
           <button
             onClick={onLogout}
@@ -232,7 +238,7 @@ function SidebarContent({
   );
 }
 
-function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogout, menuItems, isExpanded, onToggle }: any) {
+function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogout, onOpenModal, menuItems, isExpanded, onToggle }: any) {
   return (
     <aside
       className={cn(
@@ -249,6 +255,7 @@ function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLog
         fincaNombre={fincaNombre}
         fincaUbicacion={fincaUbicacion}
         onLogout={onLogout}
+        onOpenModal={onOpenModal}
         menuItems={menuItems}
         onToggle={onToggle}
         showToggle={true}
@@ -259,6 +266,7 @@ function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLog
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('propietario');
   const [userName, setUserName] = useState('');
   const [fincaNombre, setFincaNombre] = useState('');
@@ -266,7 +274,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const pathname = usePathname(); 
-  const isLoginPage = pathname === '/'; //Detectar si estamos en login
+  const isLoginPage = pathname === '/';
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
@@ -277,7 +285,6 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     const usuarioStr = localStorage.getItem('usuario');
     const rol = localStorage.getItem('userRole') as UserRole | null;
     
-    // Si no hay token, limpiar todos los estados
     if (!token) {
       setUserRole('propietario');
       setUserName('');
@@ -323,12 +330,11 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    const handleLogin = () => cargarDatosUsuario();
-    window.addEventListener('login', handleLogin);
+    window.addEventListener('login', () => cargarDatosUsuario());
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('login', handleLogin);
+      window.removeEventListener('login', () => cargarDatosUsuario());
     };
   }, []);
 
@@ -345,6 +351,14 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     router.push('/');
   };
 
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
   const menuItems = menuConfig[userRole];
 
   return (
@@ -356,6 +370,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           fincaNombre={fincaNombre}
           fincaUbicacion={fincaUbicacion}
           onLogout={handleLogout}
+          onOpenModal={handleOpenModal}
           menuItems={menuItems}
         />
       ) : (
@@ -365,12 +380,18 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           fincaNombre={fincaNombre}
           fincaUbicacion={fincaUbicacion}
           onLogout={handleLogout}
+          onOpenModal={handleOpenModal}
           menuItems={menuItems}
           isExpanded={isExpanded}
           onToggle={toggleSidebar}
         />
       ))}
       {children}
+      
+      <CambiarContrasenaModal 
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </SidebarContext.Provider>
   );
 }

@@ -13,15 +13,18 @@ import {
   Calendar as CalendarIcon,
   Kanban
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { SaludFilters } from "./salud-filters";
 import { TratamientoCard } from "./tratamiento-card";
 import { KanbanSalud } from "./kanban-salud";
 import { CalendarioSalud } from "./calendario-salud";
 import { TratamientoDetailsSheet } from "./tratamiento-details-sheet";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
+// En salud-section.tsx, actualiza el tipo
 type Tratamiento = {
   id: number;
+  numero_tratamiento?: string;  // ← Agregar esta línea
   tipo_tratamiento?: { id: number; nombre: string };
   animal?: { animal_id: number; arete: string; nombre: string };
   estado: string;
@@ -44,7 +47,8 @@ export function SaludSection() {
   const [selectedTratamiento, setSelectedTratamiento] = useState<Tratamiento | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('cards');
-  
+  const { toast } = useToast();
+
 //filtros globales
   const [globalFilters, setGlobalFilters] = useState<GlobalFilters>({
     tipos: [],
@@ -53,7 +57,6 @@ export function SaludSection() {
     mes: undefined,
   });
 
-  const { toast } = useToast();
 
   const cargarTratamientos = async () => {
     try {
@@ -101,12 +104,13 @@ export function SaludSection() {
     return Array.from(meses).sort().reverse();
   }, [tratamientos]);
 
-  // Aplicar filtros globales a los tratamientos
+
   const tratamientosFiltrados = useMemo(() => {
     return tratamientos.filter((t) => {
       if (globalFilters.search) {
         const searchLower = globalFilters.search.toLowerCase();
         const matchesSearch = 
+          t.numero_tratamiento?.toLowerCase().includes(searchLower) ||  // ← Agregar esta línea
           t.animal?.arete?.toLowerCase().includes(searchLower) ||
           t.animal?.nombre?.toLowerCase().includes(searchLower) ||
           t.tipo_tratamiento?.nombre?.toLowerCase().includes(searchLower);
@@ -131,7 +135,6 @@ export function SaludSection() {
       return true;
     });
   }, [tratamientos, globalFilters]);
-
   const opcionesTipos = [...new Set(tratamientos.map(t => t.tipo_tratamiento?.nombre).filter(Boolean))] as string[];
   const opcionesEstados = [...new Set(tratamientos.map(t => t.estado))].filter(Boolean);
 
@@ -323,6 +326,7 @@ export function SaludSection() {
         onOpenChange={setIsSheetOpen}
         onDelete={cargarTratamientos}
       />
+      <Toaster /> 
     </div>
   );
 }

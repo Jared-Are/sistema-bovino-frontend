@@ -3,22 +3,17 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, Beef } from 'lucide-react';
+import { Plus, Loader2, Beef} from 'lucide-react';
 import { AnimalFilters } from './animal-filters';
 import { AnimalDetailsSheet } from './animal-details-sheet';
 import { AnimalCards } from './animal-cards';
 import Link from 'next/link';
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 type SexoAnimal = 'Macho' | 'Hembra';
 type EstadoReproductivo = 'vacia' | 'gestante' | 'lactando' | 'seca' | 'en celo' | 'inseminada' | 'parida';
 
-/*VACIA = 'Vacía',
-  GESTANTE = 'Gestante',
-  LACTANDO = 'Lactando',
-  SECA = 'Seca',
-  EN_CELO = 'En celo',
-  INSEMINADA = 'Inseminada',
-  PARIDA = 'Parida', */
 interface AnimalBackend {
   animal_id: number;
   arete: string;
@@ -116,6 +111,7 @@ const mapBackendToFrontend = (backend: AnimalBackend): Animal => ({
 
 export function AnimalSection() {
   const router = useRouter();
+  const { toast } = useToast();
   const [animales, setAnimales] = useState<Animal[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -163,6 +159,13 @@ export function AnimalSection() {
     } catch (err: any) {
       console.error('Error:', err);
       setError(err.message || 'Error al cargar los animales');
+      
+      toast({
+        title: "Error al cargar",
+        description: err.message || 'No se pudieron cargar los animales',
+        variant: "destructive",
+        duration: 5000,
+      });
       
       if (err.message === 'No autorizado') {
         localStorage.removeItem('token');
@@ -316,6 +319,8 @@ export function AnimalSection() {
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
       />
+      
+      <Toaster />
     </div>
   );
 }

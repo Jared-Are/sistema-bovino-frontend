@@ -18,12 +18,15 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { RegistroProduccion } from '@/lib/types/produccion';
+import Modal from "./ui/modal";
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProduccionDetailsSheetProps {
   registro: RegistroProduccion | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function ProduccionDetailsSheet({
@@ -32,9 +35,42 @@ export function ProduccionDetailsSheet({
   onOpenChange,
   onDelete
 }: ProduccionDetailsSheetProps) {
+  const { toast } = useToast();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   if (!registro) return null;
 
   const isLeche = registro.tipo === 'leche';
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      if (onDelete) {
+        const result = await onDelete(registro.id);
+        if (result.success) {
+          toast({
+            title: "✅ Registro eliminado",
+            description: `El registro de ${isLeche ? 'leche' : 'carne'} se eliminó exitosamente`,
+            duration: 3000,
+          });
+          onOpenChange(false);
+        } else {
+          throw new Error(result.error || 'Error al eliminar');
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "❌ Error",
+        description: error.message || "No se pudo eliminar el registro",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setModalOpen(false);
+    }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -51,14 +87,15 @@ export function ProduccionDetailsSheet({
                   <span className="font-medium">Editar</span>
                 </Button>
               </Link>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="h-9 gap-2"
-                onClick={() => onDelete?.(registro.id)}
+              <Button 
+                size="sm" 
+                variant="destructive" 
+                className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => setModalOpen(true)}
+                disabled={deleting}
               >
                 <Trash2 className="w-4 h-4" />
-                <span className="font-medium">Borrar</span>
+                <span className="hidden sm:inline">{deleting ? "Borrando..." : "Eliminar"}</span>
               </Button>
             </div>
           </div>
@@ -112,6 +149,18 @@ export function ProduccionDetailsSheet({
             </div>
           </div>
         </div>
+        
+        <Modal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          title="Eliminar Registro"
+          description={`¿Está seguro de eliminar el registro de ${isLeche ? 'leche' : 'carne'} "${registro.numeroProduccion}" del animal "${registro.nombreAnimal}"? Esta acción no se puede deshacer.`}
+          variant="destructive"
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          loading={deleting}
+          onConfirm={handleDelete}
+        />
       </SheetContent>
     </Sheet>
   );

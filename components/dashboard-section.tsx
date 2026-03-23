@@ -12,11 +12,14 @@ import {
   Loader2,
   Syringe,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  FileText
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UniversalReportDialog } from './universal-report-dialog';
+import type { RegistroProduccion, LecheBackend, CarneBackend } from '@/lib/types/produccion';
 import {
   AreaChart,
   Area,
@@ -45,6 +48,8 @@ interface DashboardData {
     productionTrend: any[];
     distribution: any[];
     healthEvents: any[];
+    registrosLeche: RegistroProduccion[];
+    registrosCarne: RegistroProduccion[];
 }
 
 // --- Helper Components ---
@@ -64,15 +69,6 @@ const KPICard = ({ title, value, subtitle, icon: Icon, color, trend }: any) => {
                         <p className="text-sm font-medium text-zinc-500 uppercase tracking-wider">{title}</p>
                         <h3 className="text-3xl font-black text-zinc-900 mt-1">{value}</h3>
                         <div className="flex items-center gap-1.5 mt-2">
-                            {trend && (
-                                <span className={cn(
-                                    "flex items-center text-xs font-bold",
-                                    trend > 0 ? "text-emerald-600" : "text-rose-600"
-                                )}>
-                                    {trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                                    {Math.abs(trend)}%
-                                </span>
-                            )}
                             <p className="text-xs text-zinc-400">{subtitle}</p>
                         </div>
                     </div>
@@ -89,6 +85,7 @@ export function DashboardSection() {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<DashboardData | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -97,16 +94,18 @@ export function DashboardSection() {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
             // Fetching from correct endpoints
-            const [respAnimals, respLeche, respSalud, respRepro] = await Promise.all([
+            const [respAnimals, respLeche, respCarne, respSalud, respRepro] = await Promise.all([
                 fetch(`${baseUrl}/animales`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/produccion/leche`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${baseUrl}/produccion/carne`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/salud/tratamientos`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/reproduccion/montas`, { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-
-            const [animalsData, lecheData, saludData, reproData] = await Promise.all([
+            
+            const [animalsData, lecheData, carneData, saludData, reproData] = await Promise.all([
                 respAnimals.json(),
                 respLeche.json(),
+                respCarne.json(),
                 respSalud.json(),
                 respRepro.json(),
             ]);
@@ -116,10 +115,47 @@ export function DashboardSection() {
             const salud = Array.isArray(saludData) ? saludData : [];
             const repro = Array.isArray(reproData) ? reproData : [];
 
+            // Mapeo para Reporte de Producción (Manteniendo lógica original de produccion-section.tsx)
+            const mapLeche = (b: LecheBackend): RegistroProduccion => ({
+              id: b.id.toString(),
+              tipo: 'leche',
+              animalId: b.animal?.animal_id?.toString() || '',
+              arete: b.animal?.arete || 'N/A',
+              nombreAnimal: b.animal?.nombre || 'Sin nombre',
+              numeroProduccion: b.numero_produccion,
+              cantidad: b.cantidad,
+              fecha: b.fecha_creacion?.split('T')[0] || '',
+              animal: b.animal,
+            });
+
+            const mapCarne = (b: CarneBackend): RegistroProduccion => {
+              const dateStr = b.fecha_creacion?.split('T')[0] || '';
+              let numeroProduccion = b.numero_produccion || (b as any).numeroProduccion || (b as any).etiqueta;
+              if (!numeroProduccion && b.fecha_creacion && b.animal?.animal_id) {
+                const d = new Date(b.fecha_creacion);
+                const ddmmyy = `${d.getDate().toString().padStart(2, '0')}${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getFullYear().toString().slice(2)}`;
+                numeroProduccion = `C-${ddmmyy}-${b.animal.animal_id.toString().padStart(3, '0')}`;
+              }
+              return {
+                id: b.id.toString(),
+                tipo: 'carne',
+                animalId: b.animal?.animal_id?.toString() || '',
+                arete: b.animal?.arete || 'N/A',
+                nombreAnimal: b.animal?.nombre || 'Sin nombre',
+                pesoCanal: b.peso_canal,
+                numeroProduccion: numeroProduccion,
+                fecha: dateStr,
+                animal: b.animal,
+              };
+            };
+
+            const rLeche = Array.isArray(lecheData) ? lecheData.map(mapLeche) : [];
+            const rCarne = Array.isArray(carneData) ? carneData.map(mapCarne) : [];
+
             // Cálculos
             const hoy = new Date().toISOString().split('T')[0];
-            const produccionHoy = leche
-                .filter((r: any) => (r.fecha_creacion || r.fecha)?.split('T')[0] === hoy)
+            const produccionHoy = rLeche
+                .filter((r: any) => r.fecha === hoy)
                 .reduce((sum: number, r: any) => sum + Number(r.cantidad || 0), 0);
 
             const enTratamiento = salud.filter((t: any) => t.estado !== 'Completado').length;
@@ -184,7 +220,9 @@ export function DashboardSection() {
                 tasaPreñez,
                 productionTrend: ultimos7Dias,
                 distribution,
-                healthEvents: saludTrend
+                healthEvents: saludTrend,
+                registrosLeche: rLeche,
+                registrosCarne: rCarne
             });
         } catch (err) {
             console.error(err);
@@ -222,6 +260,33 @@ export function DashboardSection() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Registro de Reportes Unificado */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm mb-6">
+                <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900">
+                         PANEL DE REPORTES
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                    </h2>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button 
+                        onClick={() => setReportModalOpen(true)}
+                        className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-[11px] h-10 gap-2 px-6 rounded-xl shadow-sm"
+                    >
+                        <FileText className="w-4 h-4" />
+                        Generar Reporte
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={fetchData} 
+                        className="flex-1 sm:flex-none bg-zinc-50 border-zinc-200 hover:bg-zinc-100 text-zinc-700 gap-2 text-[11px] font-bold uppercase tracking-wider h-10 px-6 rounded-xl transition-all"
+                    >
+                        Actualizar
+                    </Button>
+                </div>
+            </div>
+
             {/* KPI Header */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard 
@@ -230,7 +295,6 @@ export function DashboardSection() {
                     subtitle="Animales registrados" 
                     icon={Users} 
                     color="blue"
-                    trend={2}
                 />
                 <KPICard 
                     title="Leche Hoy" 
@@ -238,7 +302,6 @@ export function DashboardSection() {
                     subtitle="Producción diaria" 
                     icon={Milk} 
                     color="emerald"
-                    trend={5}
                 />
                 <KPICard 
                     title="Salud / Alerta" 
@@ -246,17 +309,16 @@ export function DashboardSection() {
                     subtitle="En tratamiento" 
                     icon={Syringe} 
                     color="rose"
-                    trend={-1}
                 />
-                <KPICard 
+                    <KPICard 
                     title="Reproducción" 
                     value={data.reproEventsMonth} 
                     subtitle="Montas este mes" 
                     icon={Heart} 
                     color="amber"
-                    trend={12}
                 />
             </div>
+
 
             {/* Charts Section */}
             <Tabs defaultValue="overview" className="space-y-6">
@@ -265,11 +327,6 @@ export function DashboardSection() {
                         <TabsTrigger value="overview">Producción</TabsTrigger>
                         <TabsTrigger value="health">Salud y Estado</TabsTrigger>
                     </TabsList>
-                    
-                    <Button variant="outline" size="sm" onClick={fetchData} className="gap-2 text-[10px] font-black uppercase tracking-wider">
-                        <RefreshCw className={cn("w-3 h-3", loading && "animate-spin")} />
-                        Actualizar Datos
-                    </Button>
                 </div>
 
                 <TabsContent value="overview">
@@ -425,6 +482,13 @@ export function DashboardSection() {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            <UniversalReportDialog 
+                isOpen={reportModalOpen} 
+                onClose={() => setReportModalOpen(false)} 
+                registrosLeche={data.registrosLeche}
+                registrosCarne={data.registrosCarne}
+            />
         </div>
     );
 }

@@ -1,10 +1,11 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Stethoscope, Syringe, Pill } from 'lucide-react';
+import { Calendar, Stethoscope, Syringe, Pill, Hash } from 'lucide-react';
 
 type Tratamiento = {
   id: number;
+  numero_tratamiento?: string;
   tipo_tratamiento?: { id: number; nombre: string };
   animal?: { animal_id: number; arete: string; nombre: string };
   estado: string;
@@ -56,6 +57,14 @@ export function TratamientoCard({ tratamiento, onClick }: TratamientoCardProps) 
             {tratamiento.estado}
           </Badge>
         </div>
+
+        {tratamiento.numero_tratamiento && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs font-mono text-zinc-500">
+              {tratamiento.numero_tratamiento}
+            </span>
+          </div>
+        )}
 
         <div className="mt-2">
           <p className="text-xs text-zinc-500 font-medium">ANIMAL</p>
