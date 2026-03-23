@@ -1,17 +1,15 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Weight, MapPin, ImageOff } from 'lucide-react';
+import { Weight, MapPin } from 'lucide-react';
 import { useState } from 'react';
-
+import { formatEdad } from '@/lib/api/age-utils';
 interface Animal {
   id: string;
   arete: string;
   nombre: string;
   lote: string;
   potrero?: string;
-  estadoReproductivo: string;
-  estadoSalud: string;
   ultimoPeso: number;
   pesoNacimiento: number;
   raza: string;
@@ -30,18 +28,6 @@ interface AnimalCardsProps {
   onAnimalSelect: (animalId: string) => void;
 }
 
-const getEstadoColor = (estado: string) => {
-  const colores: Record<string, string> = {
-    'Vacía': 'bg-blue-50 text-blue-700 border-blue-200',
-    'Gestante': 'bg-purple-50 text-purple-700 border-purple-200',    
-    'Lactando': 'bg-emerald-50 text-emerald-700 border-emerald-200', 
-    'Seca': 'bg-gray-50 text-gray-700 border-gray-200',
-    'En celo': 'bg-pink-50 text-pink-700 border-pink-200',           
-    'Inseminada': 'bg-indigo-50 text-indigo-700 border-indigo-200',   
-    'Parida': 'bg-amber-50 text-amber-700 border-amber-200',          
-  };
-  return colores[estado] || 'bg-gray-50 text-gray-700 border-gray-200';
-};
 
 export function AnimalCards({ animals, selectedAnimal, onAnimalSelect }: AnimalCardsProps) {
   const [imagesError, setImagesError] = useState<Record<string, boolean>>({});
@@ -110,9 +96,7 @@ export function AnimalCards({ animals, selectedAnimal, onAnimalSelect }: AnimalC
                     <span className="text-xs text-zinc-500 truncate">{animal.raza}</span>
                   </div>
                 </div>
-                <Badge variant="outline" className={`${getEstadoColor(animal.estadoReproductivo)} shrink-0`}>
-                  {animal.estadoReproductivo}
-                </Badge>
+              
               </div>
 
               <div className="space-y-2 mb-3">
@@ -127,10 +111,7 @@ export function AnimalCards({ animals, selectedAnimal, onAnimalSelect }: AnimalC
               </div>
 
               <div className="pt-2 border-t border-zinc-100 flex justify-between items-center">
-                <span className="text-xs text-zinc-500">{animal.edad} años</span>
-                <span className="text-xs text-zinc-400">
-                  {new Date(animal.fechaNacimiento).toLocaleDateString('es-ES')}
-                </span>
+                <span className="text-xs text-zinc-500">{formatEdad(animal.fechaNacimiento)}</span>
               </div>
             </div>
           </div>

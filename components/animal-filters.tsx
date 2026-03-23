@@ -9,52 +9,32 @@ import { X, Plus } from 'lucide-react';
 interface AnimalFiltersProps {
   onFiltersChange?: (filters: any) => void;
   lotes?: string[];
-  estados?: string[];
 }
 
-export function AnimalFilters({ onFiltersChange, lotes = [], estados = [] }: AnimalFiltersProps) {
+export default function AnimalFilters({ onFiltersChange, lotes = [] }: AnimalFiltersProps) {
   const [selectedLotes, setSelectedLotes] = useState<string[]>([]);
-  const [selectedEstados, setSelectedEstados] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Mapeo para mostrar labels bonitos
-  const estadoLabels: Record<string, string> = {
-    vacia: 'Vacía',
-    gestacion: 'Gestación',
-    lactancia: 'Lactancia',
-    seco: 'Seco',
-    preparto: 'Preparto',
-  };
 
   const handleAddLote = (lote: string) => {
     const newLotes = selectedLotes.includes(lote)
       ? selectedLotes.filter((l) => l !== lote)
       : [...selectedLotes, lote];
     setSelectedLotes(newLotes);
-    onFiltersChange?.({ lotes: newLotes, estados: selectedEstados, search: searchTerm });
-  };
-
-  const handleAddEstado = (estado: string) => {
-    const newEstados = selectedEstados.includes(estado)
-      ? selectedEstados.filter((e) => e !== estado)
-      : [...selectedEstados, estado];
-    setSelectedEstados(newEstados);
-    onFiltersChange?.({ lotes: selectedLotes, estados: newEstados, search: searchTerm });
+    onFiltersChange?.({ lotes: newLotes, search: searchTerm });
   };
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    onFiltersChange?.({ lotes: selectedLotes, estados: selectedEstados, search: value });
+    onFiltersChange?.({ lotes: selectedLotes, search: value });
   };
 
   const handleClearFilters = () => {
     setSelectedLotes([]);
-    setSelectedEstados([]);
     setSearchTerm('');
-    onFiltersChange?.({ lotes: [], estados: [], search: '' });
+    onFiltersChange?.({ lotes: [], search: '' });
   };
 
-  const hasFilters = selectedLotes.length > 0 || selectedEstados.length > 0 || searchTerm.length > 0;
+  const hasFilters = selectedLotes.length > 0 || searchTerm.length > 0;
 
   return (
     <div className="space-y-4 mb-6 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
@@ -94,42 +74,6 @@ export function AnimalFilters({ onFiltersChange, lotes = [], estados = [] }: Ani
                   <button
                     onClick={() => handleAddLote(lote)}
                     className="ml-1 hover:text-emerald-900"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Estados Multi-select */}
-      {estados.length > 0 && (
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Estados Reproductivos</label>
-          <div className="flex flex-wrap gap-2">
-            {estados.map((estado) => (
-              <Button
-                key={estado}
-                onClick={() => handleAddEstado(estado)}
-                variant={selectedEstados.includes(estado) ? 'default' : 'outline'}
-                size="sm"
-                className={selectedEstados.includes(estado) ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                {estadoLabels[estado] || estado}
-              </Button>
-            ))}
-          </div>
-          {selectedEstados.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {selectedEstados.map((estado) => (
-                <Badge key={estado} variant="secondary" className="bg-purple-100 text-purple-700">
-                  {estadoLabels[estado] || estado}
-                  <button
-                    onClick={() => handleAddEstado(estado)}
-                    className="ml-1 hover:text-purple-900"
                   >
                     <X className="w-3 h-3" />
                   </button>

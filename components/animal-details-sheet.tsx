@@ -11,33 +11,27 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Calendar,
-  Weight,
   Heart,
-  Stethoscope,
-  TrendingUp,
   Plus,
-  MapPin,
-  User,
-  Droplets,
-  Scale,
-  Baby,
   TreePine,
-  CalendarDays,
   Syringe,
-  FileText,
+  Milk,
   Pencil,
   Trash2,
-  Pill,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Activity,
+  Calendar,
+  Scale,
+  Droplets,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/ui/modal';
+import { formatEdad } from '@/lib/api/age-utils';
+import { ReproduccionCards } from './reproduccion-cards';
+import { TratamientoCard } from './tratamiento-card';
+import { ProduccionCards } from './produccion-cards';
+
+type SexoAnimal = 'Macho' | 'Hembra';
 
 interface Animal {
   id: string;
@@ -45,22 +39,18 @@ interface Animal {
   nombre: string;
   lote: string;
   potrero?: string;
-  estadoReproductivo: string;
-  estadoSalud: string;
   ultimoPeso: number;
-  pesoNacimiento?: number;
+  pesoNacimiento: number;
   raza: string;
   edad: number;
-  sexo: string;
+  sexo: SexoAnimal;
   fechaNacimiento: string;
   fechaDestete?: string;
   imagen?: string;
   padre?: string;
   madre?: string;
-  montas: any[];
-  tratamientos: any[];
-  pesajes: any[];
-  produccionDiaria?: number;
+  padreId?: string;
+  madreId?: string;
 }
 
 interface AnimalDetailsSheetProps {
@@ -70,12 +60,13 @@ interface AnimalDetailsSheetProps {
   readOnly?: boolean;
 }
 
-type TratamientoReal = {
-  id: number;
-  tipo_tratamiento?: { id: number; nombre: string };
-  estado: string;
-  fecha: string;
-  descripcion?: string;
+const formatFecha = (fecha: string) => {
+  if (!fecha) return 'No registrada';
+  return new Date(fecha).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 };
 
 export function AnimalDetailsSheet({
@@ -84,134 +75,126 @@ export function AnimalDetailsSheet({
   onOpenChange,
   readOnly = false,
 }: AnimalDetailsSheetProps) {
-  const [tratamientos, setTratamientos] = useState<TratamientoReal[]>([]);
-  const [cargandoTratamientos, setCargandoTratamientos] = useState(false);
-  const { toast } = useToast();
-  const router = useRouter();
+  const [montas, setMontas] = useState<any[]>([]);
+  const [tratamientos, setTratamientos] = useState<any[]>([]);
+  const [produccion, setProduccion] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
-  const cargarTratamientos = async () => {
+  const cargarHistoriales = async () => {
     if (!animal) return;
     
+    setCargando(true);
     try {
-      setCargandoTratamientos(true);
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/salud/tratamientos?animal_id=${animal.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error('Error al cargar tratamientos');
-
-      const data = await response.json();
-      
-      const tratamientosDelAnimal = data.filter((t: any) => 
-        t.animal?.animal_id?.toString() === animal.id || 
-        t.animal_id?.toString() === animal.id
-      );
-      
-      setTratamientos(tratamientosDelAnimal);
-    } catch (error) {
-      console.error('Error cargando tratamientos:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los tratamientos",
-        variant: "destructive",
+      // 1. Cargar montas/reproducción (últimos 3)
+      const montasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/montas/animal/${animal.id}?limit=3`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (montasRes.ok) {
+        const data = await montasRes.json();
+        const montasFormateadas = data.map((m: any) => ({
+          id: m.id,
+          numeroMonta: m.numero_monta,
+          arete: animal.arete,
+          nombreAnimal: animal.nombre,
+          fecha: m.fecha_programacion,
+          tipoMonta: m.tipo_monta === 'NATURAL' ? 'Monta Natural' : 'Inseminación Artificial',
+          estado: m.estado,
+          toro: m.animal_macho?.arete || m.codigo_pajilla || 'No especificado'
+        }));
+        setMontas(montasFormateadas);
+      }
+
+      // 2. Cargar tratamientos/salud (últimos 3)
+      const tratamientosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tratamientos/animal/${animal.id}?limit=3`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (tratamientosRes.ok) {
+        const data = await tratamientosRes.json();
+        const tratamientosFormateados = data.map((t: any) => ({
+          id: t.id,
+          numero_tratamiento: t.numero_tratamiento,
+          tipo_tratamiento: t.tipo_tratamiento,
+          animal: {
+            animal_id: parseInt(animal.id),
+            arete: animal.arete,
+            nombre: animal.nombre
+          },
+          estado: t.estado,
+          fecha: t.fecha,
+          descripcion: t.descripcion
+        }));
+        setTratamientos(tratamientosFormateados);
+      }
+
+      // 3. Cargar producción lechera (últimos 3)
+      const produccionRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion-lechera/animal/${animal.id}?limit=3`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (produccionRes.ok) {
+        const data = await produccionRes.json();
+        const produccionFormateada = data.map((p: any) => ({
+          id: p.id.toString(),
+          tipo: 'leche',
+          arete: animal.arete,
+          nombreAnimal: animal.nombre,
+          cantidad: p.cantidad,
+          fecha: new Date(p.fecha_creacion).toLocaleDateString(),
+          numeroProduccion: p.numero_produccion
+        }));
+        setProduccion(produccionFormateada);
+      }
+    } catch (error) {
+      console.error('Error cargando historiales:', error);
     } finally {
-      setCargandoTratamientos(false);
+      setCargando(false);
     }
   };
 
   useEffect(() => {
     if (isOpen && animal) {
-      cargarTratamientos();
+      cargarHistoriales();
     }
   }, [isOpen, animal]);
 
-  if (!animal) return null;
-
-  const getReproductivoBadgeColor = (estado: string) => {
-    const colors: Record<string, string> = {
-      'Vacía': 'bg-blue-100 text-blue-800',
-      'Gestante': 'bg-purple-100 text-purple-800',    
-      'Lactando': 'bg-emerald-100 text-emerald-800',   
-      'Parida': 'bg-amber-100 text-amber-800',      
-      'Seca': 'bg-gray-100 text-gray-800',
-      'En celo': 'bg-pink-100 text-pink-800',         
-      'Inseminada': 'bg-indigo-100 text-indigo-800',   
-    };
-    return colors[estado] || 'bg-gray-100 text-gray-800';
+  const handleNuevoRegistro = (ruta: string) => {
+    router.push(`${ruta}?animalId=${animal?.id}`);
+    onOpenChange(false);
   };
 
-  const getSaludBadgeColor = (estado: string) => {
-    const colors: Record<string, string> = {
-      sano: 'bg-emerald-100 text-emerald-800',
-      enfermo: 'bg-red-100 text-red-800',
-      tratamiento: 'bg-yellow-100 text-yellow-800',
-      critico: 'bg-red-200 text-red-900',
-    };
-    return colors[estado] || 'bg-emerald-100 text-emerald-800';
+  const handleVerTodos = (modulo: string) => {
+    router.push(`/${modulo}/animal/${animal?.id}`);
+    onOpenChange(false);
   };
 
-  const getEstadoTratamientoColor = (estado: string) => {
-    switch (estado) {
-      case "ACTIVO":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "PENDIENTE":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "COMPLETADO":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
-      case "CANCELADO":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+  const handleRegistroSelect = (registro: any) => {
+    if (registro.id) {
+      router.push(`/reproduccion/${registro.id}`);
+      onOpenChange(false);
     }
   };
 
-  const getEstadoIcono = (estado: string) => {
-    switch (estado) {
-      case "ACTIVO":
-        return <Activity className="h-3 w-3" />;
-      case "PENDIENTE":
-        return <Clock className="h-3 w-3" />;
-      case "COMPLETADO":
-        return <CheckCircle className="h-3 w-3" />;
-      case "CANCELADO":
-        return <XCircle className="h-3 w-3" />;
-      default:
-        return null;
+  const handleTratamientoSelect = (tratamiento: any) => {
+    if (tratamiento.id) {
+      router.push(`/salud/${tratamiento.id}`);
+      onOpenChange(false);
     }
   };
 
-  const getIconoTratamiento = (tipoNombre?: string) => {
-    if (tipoNombre?.toLowerCase().includes("vacuna")) return <Syringe className="h-4 w-4" />;
-    if (tipoNombre?.toLowerCase().includes("desparasit")) return <Pill className="h-4 w-4" />;
-    return <Stethoscope className="h-4 w-4" />;
-  };
-
-  const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
-
-  const handleNuevoTratamiento = () => {
-    router.push(`/salud/nuevo?animalId=${animal.id}`);
+  const handleProduccionSelect = (id: string) => {
+    router.push(`/produccion/${id}`);
     onOpenChange(false);
   };
 
   const handleDelete = async () => {
+    if (!animal) return;
+    
     setDeleting(true);
     try {
       const token = localStorage.getItem('token');
@@ -249,8 +232,7 @@ export function AnimalDetailsSheet({
     }
   };
 
-  const tratamientosActivos = tratamientos.filter(t => t.estado === 'ACTIVO' || t.estado === 'PENDIENTE');
-  const tratamientosHistorial = tratamientos.filter(t => t.estado === 'COMPLETADO' || t.estado === 'CANCELADO');
+  if (!animal) return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -305,7 +287,7 @@ export function AnimalDetailsSheet({
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
                   <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Edad</p>
-                  <p className="text-lg font-black text-zinc-900">{animal.edad} años</p>
+                  <p className="text-lg font-black text-zinc-900">{formatEdad(animal.fechaNacimiento)}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
                   <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Sexo</p>
@@ -322,15 +304,6 @@ export function AnimalDetailsSheet({
                   <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Lote</p>
                   <p className="text-base font-black text-zinc-900 leading-tight">{animal.lote}</p>
                 </div>
-              </div>
-
-              <div className="flex gap-2 flex-wrap pt-2">
-                <Badge className={getReproductivoBadgeColor(animal.estadoReproductivo)}>
-                  {animal.estadoReproductivo}
-                </Badge>
-                <Badge className={getSaludBadgeColor(animal.estadoSalud)}>
-                  {animal.estadoSalud}
-                </Badge>
               </div>
             </SheetHeader>
           </div>
@@ -364,6 +337,156 @@ export function AnimalDetailsSheet({
                 Producción
               </TabsTrigger>
             </TabsList>
+
+            {/* TAB GENERAL - Con madre y padre */}
+            <TabsContent value="general" className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-zinc-500">Fecha de Nacimiento</p>
+                  <p className="font-medium">{formatFecha(animal.fechaNacimiento)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Peso al Nacer</p>
+                  <p className="font-medium">{animal.pesoNacimiento} kg</p>
+                </div>
+                {animal.fechaDestete && (
+                  <div>
+                    <p className="text-sm text-zinc-500">Fecha de Destete</p>
+                    <p className="font-medium">{formatFecha(animal.fechaDestete)}</p>
+                  </div>
+                )}
+                {/* 👇 GENEALOGÍA: Madre y Padre */}
+                {animal.madre && (
+                  <div>
+                    <p className="text-sm text-zinc-500">Madre</p>
+                    <p className="font-medium">{animal.madre}</p>
+                  </div>
+                )}
+                {animal.padre && (
+                  <div>
+                    <p className="text-sm text-zinc-500">Padre</p>
+                    <p className="font-medium">{animal.padre}</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* TAB REPRODUCCIÓN - Últimos 3 registros */}
+            <TabsContent value="reproduccion" className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-lg">Historial de Reproducción</h3>
+                <Button 
+                  size="sm" 
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => handleNuevoRegistro('/reproduccion/nuevo')}
+                >
+                  <Plus className="w-4 h-4" />
+                  Registrar Servicio
+                </Button>
+              </div>
+              
+              {cargando ? (
+                <p className="text-center text-zinc-500 py-8">Cargando...</p>
+              ) : montas.length > 0 ? (
+                <>
+                  <ReproduccionCards 
+                    registros={montas}
+                    selectedRegistro={undefined}
+                    onRegistroSelect={handleRegistroSelect}
+                  />
+                  {montas.length === 3 && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full mt-4"
+                      onClick={() => handleVerTodos('reproduccion')}
+                    >
+                      Ver historial completo de reproducción
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-zinc-500 py-8">No hay registros de reproducción</p>
+              )}
+            </TabsContent>
+
+            {/* TAB SALUD - Últimos 3 registros */}
+            <TabsContent value="salud" className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-lg">Historial de Salud</h3>
+                <Button 
+                  size="sm" 
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => handleNuevoRegistro('/salud/nuevo')}
+                >
+                  <Plus className="w-4 h-4" />
+                  Registrar Tratamiento
+                </Button>
+              </div>
+              
+              {cargando ? (
+                <p className="text-center text-zinc-500 py-8">Cargando...</p>
+              ) : tratamientos.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {tratamientos.map((tratamiento) => (
+                      <TratamientoCard 
+                        key={tratamiento.id} 
+                        tratamiento={tratamiento}
+                        onClick={() => handleTratamientoSelect(tratamiento)}
+                      />
+                    ))}
+                  </div>
+                  {tratamientos.length === 3 && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full mt-4"
+                      onClick={() => handleVerTodos('salud')}
+                    >
+                      Ver historial completo de salud
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-zinc-500 py-8">No hay registros de salud</p>
+              )}
+            </TabsContent>
+
+            {/* TAB PRODUCCIÓN - Últimos 3 registros */}
+            <TabsContent value="produccion" className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-lg">Historial de Producción Lechera</h3>
+                <Button 
+                  size="sm" 
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => handleNuevoRegistro('/produccion/nuevo')}
+                >
+                  <Plus className="w-4 h-4" />
+                  Registrar Producción
+                </Button>
+              </div>
+              
+              {cargando ? (
+                <p className="text-center text-zinc-500 py-8">Cargando...</p>
+              ) : produccion.length > 0 ? (
+                <>
+                  <ProduccionCards 
+                    registros={produccion}
+                    onSelect={handleProduccionSelect}
+                  />
+                  {produccion.length === 3 && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full mt-4"
+                      onClick={() => handleVerTodos('produccion')}
+                    >
+                      Ver historial completo de producción
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-zinc-500 py-8">No hay registros de producción</p>
+              )}
+            </TabsContent>
           </Tabs>
         </div>
         

@@ -41,7 +41,6 @@ const updateAnimalSchema = z.object({
         .optional(),
     animalMadreId: z.string().optional(),
     animalPadreId: z.string().optional(),
-    estadoReproductivo: z.string().optional(),
 });
 
 type Raza = { raza_id: number; nombre: string; };
@@ -81,7 +80,6 @@ export default function EditarAnimalPage() {
         pesoActual: "",
         animalMadreId: "",
         animalPadreId: "",
-        estadoReproductivo: "Vacía",
     });
 
     useEffect(() => {
@@ -117,7 +115,7 @@ export default function EditarAnimalPage() {
                 const animal = await animalRes.json();
                 
                 setFormData({
-                    arete: animal.arete || "",
+                   arete: animal.arete || "",
                     nombre: animal.nombre || "",
                     sexo: animal.sexo || "Hembra",
                     razaId: animal.raza?.raza_id?.toString() || "",
@@ -127,9 +125,8 @@ export default function EditarAnimalPage() {
                     fechaDestete: animal.fecha_destete?.split('T')[0] || "",
                     pesoNacimiento: animal.peso_nacimiento?.toString() || "",
                     pesoActual: animal.peso_actual?.toString() || "",
-                    animalMadreId: animal.animal_madre_id?.toString() || "",
-                    animalPadreId: animal.animal_padre_id?.toString() || "",
-                    estadoReproductivo: animal.estado_reproductivo || "Vacía",
+                    animalMadreId: animal.madre?.animal_id?.toString() || "",
+                    animalPadreId: animal.padre?.animal_id?.toString() || "",
                 });
 
                 if (animal.imagen) setFotoUrl(animal.imagen);
@@ -198,7 +195,6 @@ export default function EditarAnimalPage() {
                 pesoActual: formData.pesoActual ? Number(formData.pesoActual) : undefined,
                 animalMadreId: formData.animalMadreId,
                 animalPadreId: formData.animalPadreId,
-                estadoReproductivo: formData.estadoReproductivo,
             };
 
             // Validar solo si hay algún cambio (opcional)
@@ -216,7 +212,6 @@ export default function EditarAnimalPage() {
             if (formData.potreroId) payload.potrero_id = formData.potreroId === "sin-potrero" ? null : Number(formData.potreroId);
             if (formData.animalMadreId) payload.animal_madre_id = formData.animalMadreId === "sin-madre" ? null : Number(formData.animalMadreId);
             if (formData.animalPadreId) payload.animal_padre_id = formData.animalPadreId === "sin-padre" ? null : Number(formData.animalPadreId);
-            if (formData.estadoReproductivo) payload.estado_reproductivo = formData.estadoReproductivo;
             if (fotoUrl !== undefined) payload.imagen = fotoUrl || null;
 
             // Si no hay cambios, mostrar mensaje
@@ -459,26 +454,6 @@ export default function EditarAnimalPage() {
                                             onChange={(e) => setFormData({...formData, pesoActual: e.target.value})}
                                         />
                                     </div>
-                                </div>
-                                <div>
-                                    <Label>Estado Reproductivo</Label>
-                                    <Select 
-                                        value={formData.estadoReproductivo} 
-                                        onValueChange={(v) => setFormData({...formData, estadoReproductivo: v})}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Vacía">Vacía</SelectItem>
-                                            <SelectItem value="Gestante">Gestante</SelectItem>
-                                            <SelectItem value="Lactando">Lactando</SelectItem>
-                                            <SelectItem value="Seca">Seca</SelectItem>
-                                            <SelectItem value="En celo">En celo</SelectItem>
-                                            <SelectItem value="Inseminada">Inseminada</SelectItem>
-                                            <SelectItem value="Parida">Parida</SelectItem>
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                             </div>
 

@@ -65,7 +65,7 @@ const animalSchema = z.object({
         .optional(),
     animalMadreId: z.string().optional(),
     animalPadreId: z.string().optional(),
-    estadoReproductivo: z.string().optional(),
+
 });
 
 type Raza = { raza_id: number; nombre: string; };
@@ -102,7 +102,6 @@ export default function NuevoAnimalPage() {
         pesoActual: "",
         animalMadreId: "",
         animalPadreId: "",
-        estadoReproductivo: "Vacía", 
     });
 
     useEffect(() => {
@@ -251,7 +250,6 @@ export default function NuevoAnimalPage() {
                 peso_actual: valid.pesoActual || valid.pesoNacimiento,
                 animal_madre_id: valid.animalMadreId === "sin-madre" ? null : valid.animalMadreId ? Number(valid.animalMadreId) : null,
                 animal_padre_id: valid.animalPadreId === "sin-padre" ? null : valid.animalPadreId ? Number(valid.animalPadreId) : null,
-                estado_reproductivo: valid.estadoReproductivo || "Vacía",
                 imagen: fotoUrl || null,
             };
 
@@ -588,25 +586,6 @@ export default function NuevoAnimalPage() {
                             </div>
                         </div>
 
-                        {/* Estado Reproductivo */}
-                        <div className="grid md:grid-cols-1 gap-4">
-                            <div>
-                                <Label>Estado Reproductivo</Label>
-                                <Select value={formData.estadoReproductivo} 
-                                    onValueChange={(v) => setFormData({...formData, estadoReproductivo: v})}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Vacía">Vacía</SelectItem>
-                                        <SelectItem value="Gestante">Gestante</SelectItem>
-                                        <SelectItem value="Lactando">Lactando</SelectItem>
-                                        <SelectItem value="Seca">Seca</SelectItem>
-                                        <SelectItem value="En celo">En celo</SelectItem>
-                                        <SelectItem value="Inseminada">Inseminada</SelectItem>
-                                        <SelectItem value="Parida">Parida</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
 
                         {/* Padres */}
                         <div className="border-t pt-4">
