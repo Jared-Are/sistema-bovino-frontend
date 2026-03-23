@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
 import { ReproduccionDetailsSheet } from "./reproduccion-details-sheet";
 import { ReproduccionCards } from "./reproduccion-cards";
 import { ReproduccionFilters } from "./reproduccion-filters";
@@ -12,11 +11,10 @@ import type {
   RegistroReproduccion,
   ReproduccionBackend,
 } from "@/lib/types/reproduccion";
-
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
+import { Toaster } from "@/components/ui/toaster";
 const mapBackendToFrontend = (
   item: ReproduccionBackend,
 ): RegistroReproduccion => ({
@@ -43,7 +41,6 @@ export function ReproduccionSection() {
   const [selectedRegistro, setSelectedRegistro] =
     useState<RegistroReproduccion | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
   const cargarRegistros = async () => {
     try {
       setCargando(true);
@@ -187,6 +184,7 @@ export function ReproduccionSection() {
         onOpenChange={setIsSheetOpen}
         onSuccess={cargarRegistros}
       />
+      <Toaster />
     </div>
   );
 }

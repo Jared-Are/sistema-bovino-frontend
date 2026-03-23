@@ -1,14 +1,15 @@
-"use client";
+'use client';
 
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Calendar, Heart, Pencil, Stethoscope, Syringe, Trash2, User, Info } from "lucide-react";
+import { Activity, Heart, Pencil, Stethoscope, Syringe, Trash2, User, Info } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import type { RegistroReproduccion } from "@/lib/types/reproduccion";
+import Modal from "./ui/modal";
 
 interface ReproduccionDetailsSheetProps {
   registro: RegistroReproduccion | null;
@@ -24,7 +25,8 @@ export function ReproduccionDetailsSheet({
   onSuccess
 }: ReproduccionDetailsSheetProps) {
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!registro) return null;
 
@@ -39,7 +41,7 @@ export function ReproduccionDetailsSheet({
     if (est.includes("fallida")) return "bg-red-100 text-red-800 border-red-200";
     if (est.includes("aborto")) return "bg-rose-100 text-rose-800 border-rose-200";
     if (est.includes("parto")) return "bg-purple-100 text-purple-800 border-purple-200";
-    return "bg-blue-100 text-blue-800 border-blue-200"; // En Evaluación
+    return "bg-blue-100 text-blue-800 border-blue-200";
   };
 
   const estadoActual = registro.estado.toLowerCase();
@@ -47,9 +49,7 @@ export function ReproduccionDetailsSheet({
   const mostrarParto = estadoActual.includes("confirmada") || estadoActual.includes("gestante");
 
   const handleDelete = async () => {
-    if (!confirm(`¿Estás seguro de eliminar el servicio ${registro.numeroMonta}?`)) return;
-    
-    setIsDeleting(true);
+    setDeleting(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/montas/${registro.id}`, {
@@ -58,13 +58,24 @@ export function ReproduccionDetailsSheet({
       });
 
       if (!response.ok) throw new Error("No se pudo eliminar el registro.");
-      toast({ title: "Eliminado", description: "El registro fue borrado exitosamente." });
+      
+      toast({ 
+        title: "✅ Eliminado", 
+        description: "El registro fue borrado exitosamente.",
+        duration: 3000,
+      });
       onOpenChange(false);
       onSuccess(); 
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "❌ Error", 
+        description: error.message, 
+        variant: "destructive",
+        duration: 5000,
+      });
     } finally {
-      setIsDeleting(false);
+      setDeleting(false);
+      setModalOpen(false);
     }
   };
 
@@ -72,8 +83,6 @@ export function ReproduccionDetailsSheet({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:w-[94%] md:w-[88%] lg:w-[75%] xl:w-[65%] max-w-5xl overflow-y-auto p-0">
         <div className="relative">
-          
-          {/* HEADER IDÉNTICO AL DE SHERLY */}
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 border-b border-zinc-200 sticky top-0 z-10">
             <SheetHeader className="space-y-4">
               <div className="flex items-start justify-between">
@@ -92,7 +101,6 @@ export function ReproduccionDetailsSheet({
                   </div>
                 </div>
                 
-                {/* BOTONES SUPERIORES */}
                 <div className="flex gap-2 ml-4 flex-wrap justify-end">
                   <Link href={`/reproduccion/${registro.id}`}>
                     <Button size="sm" variant="outline" className="gap-2 bg-white">
@@ -100,14 +108,19 @@ export function ReproduccionDetailsSheet({
                       <span className="hidden sm:inline">Editar</span>
                     </Button>
                   </Link>
-                  <Button size="sm" variant="destructive" className="gap-2" onClick={handleDelete} disabled={isDeleting}>
+                  <Button 
+                    size="sm" 
+                    variant="destructive" 
+                    className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => setModalOpen(true)}
+                    disabled={deleting}
+                  >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">{isDeleting ? "Borrando..." : "Eliminar"}</span>
+                    <span className="hidden sm:inline">{deleting ? "Borrando..." : "Eliminar"}</span>
                   </Button>
                 </div>
               </div>
 
-              {/* TARJETAS RESUMEN CON MÁS "AIRE" */}
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
                   <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Método</p>
@@ -125,7 +138,6 @@ export function ReproduccionDetailsSheet({
           </div>
         </div>
 
-        {/* CONTENIDO (TABS) */}
         <div className="p-6">
           <Tabs defaultValue="estado" className="w-full">
             <TabsList className="flex gap-2 mb-6 bg-transparent h-auto p-0 flex-wrap">
@@ -135,7 +147,6 @@ export function ReproduccionDetailsSheet({
             </TabsList>
 
             <TabsContent value="estado" className="space-y-6">
-              
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-600" /> Seguimiento del Servicio
@@ -156,7 +167,6 @@ export function ReproduccionDetailsSheet({
                     </div>
                   </div>
 
-                  {/* BOTONES DE ACCIÓN RÁPIDA */}
                   <div className="pt-4 border-t border-zinc-100 flex gap-3">
                     {mostrarDiagnostico && (
                       <Link href={`/reproduccion/diagnosticos/nuevo?montaId=${registro.id}`} className="w-full">
@@ -184,10 +194,21 @@ export function ReproduccionDetailsSheet({
                   </div>
                 </div>
               </div>
-
             </TabsContent>
           </Tabs>
         </div>
+        
+        <Modal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          title="Eliminar Servicio"
+          description={`¿Está seguro de eliminar el servicio "${registro.numeroMonta}" del animal "${registro.nombreAnimal}"? Esta acción no se puede deshacer.`}
+          variant="destructive"
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          loading={deleting}
+          onConfirm={handleDelete}
+        />
       </SheetContent>
     </Sheet>
   );

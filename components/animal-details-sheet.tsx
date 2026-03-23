@@ -33,11 +33,11 @@ import {
   CheckCircle,
   XCircle,
   Activity,
-  ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import Modal from '@/components/ui/modal';
 
 interface Animal {
   id: string;
@@ -88,6 +88,8 @@ export function AnimalDetailsSheet({
   const [cargandoTratamientos, setCargandoTratamientos] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const cargarTratamientos = async () => {
     if (!animal) return;
@@ -139,13 +141,13 @@ export function AnimalDetailsSheet({
 
   const getReproductivoBadgeColor = (estado: string) => {
     const colors: Record<string, string> = {
-    'Vacía': 'bg-blue-100 text-blue-800',
-    'Gestante': 'bg-purple-100 text-purple-800',    
-    'Lactando': 'bg-emerald-100 text-emerald-800',   
-    'Parida': 'bg-amber-100 text-amber-800',      
-    'Seca': 'bg-gray-100 text-gray-800',
-    'En celo': 'bg-pink-100 text-pink-800',         
-    'Inseminada': 'bg-indigo-100 text-indigo-800',   
+      'Vacía': 'bg-blue-100 text-blue-800',
+      'Gestante': 'bg-purple-100 text-purple-800',    
+      'Lactando': 'bg-emerald-100 text-emerald-800',   
+      'Parida': 'bg-amber-100 text-amber-800',      
+      'Seca': 'bg-gray-100 text-gray-800',
+      'En celo': 'bg-pink-100 text-pink-800',         
+      'Inseminada': 'bg-indigo-100 text-indigo-800',   
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
   };
@@ -209,6 +211,44 @@ export function AnimalDetailsSheet({
     onOpenChange(false);
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      
+      if (response.ok) {
+        toast({
+          title: "✅ Animal eliminado",
+          description: `${animal.nombre} ha sido eliminado exitosamente`,
+          duration: 3000,
+        });
+        onOpenChange(false);
+        window.location.reload();
+      } else {
+        throw new Error('Error al eliminar');
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "No se pudo eliminar el animal",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setModalOpen(false);
+    }
+  };
+
   const tratamientosActivos = tratamientos.filter(t => t.estado === 'ACTIVO' || t.estado === 'PENDIENTE');
   const tratamientosHistorial = tratamientos.filter(t => t.estado === 'COMPLETADO' || t.estado === 'CANCELADO');
 
@@ -243,7 +283,7 @@ export function AnimalDetailsSheet({
                 {!readOnly && (
                   <div className="flex gap-2 ml-4">
                     <Link href={`/animales/${animal.id}`}>
-                      <Button size="sm" variant="outline" className="gap-2">
+                      <Button size="sm" variant="outline" className="gap-2 bg-white">
                         <Pencil className="w-4 h-4" />
                         <span className="hidden sm:inline">Editar</span>
                       </Button>
@@ -251,34 +291,12 @@ export function AnimalDetailsSheet({
                     <Button 
                       size="sm" 
                       variant="destructive" 
-                      className="gap-2"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (confirm('¿Estás seguro de eliminar este animal?')) {
-                          try {
-                            const token = localStorage.getItem('token');
-                            if (!token) return;
-                            
-                            const response = await fetch(
-                              `${process.env.NEXT_PUBLIC_API_URL}/animales/${animal.id}`,
-                              {
-                                method: 'DELETE',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                              }
-                            );
-                            
-                            if (response.ok) {
-                              onOpenChange(false);
-                              window.location.reload();
-                            }
-                          } catch (error) {
-                            console.error('Error al eliminar:', error);
-                          }
-                        }
-                      }}
+                      className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => setModalOpen(true)}
+                      disabled={deleting}
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Eliminar</span>
+                      <span className="hidden sm:inline">{deleting ? "Borrando..." : "Eliminar"}</span>
                     </Button>
                   </div>
                 )}
@@ -346,305 +364,20 @@ export function AnimalDetailsSheet({
                 Producción
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="general" className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <User className="w-4 h-4" /> Información Básica
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Arete</p>
-                    <p className="text-base font-bold text-zinc-900">{animal.arete}</p>
-                  </div>
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Raza</p>
-                    <p className="text-base font-bold text-zinc-900">{animal.raza}</p>
-                  </div>
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Lote</p>
-                    <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-zinc-400" />
-                      {animal.lote}
-                    </p>
-                  </div>
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Potrero</p>
-                    <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                      <TreePine className="w-4 h-4 text-zinc-400" />
-                      {animal.potrero || 'No asignado'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4" /> Fechas Importantes
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Fecha de Nacimiento</p>
-                    <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-zinc-400" />
-                      {formatFecha(animal.fechaNacimiento)}
-                    </p>
-                  </div>
-                  {animal.fechaDestete && (
-                    <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                      <p className="text-xs text-zinc-500 font-medium mb-1">Fecha de Destete</p>
-                      <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-zinc-400" />
-                        {formatFecha(animal.fechaDestete)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <Scale className="w-4 h-4" /> Pesos
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Peso al Nacer</p>
-                    <p className="text-2xl font-bold text-emerald-700 flex items-center gap-2">
-                      <Baby className="w-5 h-5 text-emerald-500" />
-                      {animal.pesoNacimiento || 0} kg
-                    </p>
-                  </div>
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Peso Actual</p>
-                    <p className="text-2xl font-bold text-emerald-700 flex items-center gap-2">
-                      <Weight className="w-5 h-5 text-emerald-500" />
-                      {animal.ultimoPeso} kg
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <Droplets className="w-4 h-4" /> Genealogía
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {animal.padre ? (
-                    <div className="border border-zinc-200 rounded-lg p-4 bg-blue-50">
-                      <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
-                        <User className="w-3 h-3" /> Padre
-                      </p>
-                      <p className="text-base font-bold text-zinc-900">{animal.padre}</p>
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-zinc-300 rounded-lg p-4 bg-zinc-50">
-                      <p className="text-xs text-zinc-400 font-medium">Padre no registrado</p>
-                    </div>
-                  )}
-
-                  {animal.madre ? (
-                    <div className="border border-zinc-200 rounded-lg p-4 bg-pink-50">
-                      <p className="text-xs text-pink-600 font-medium mb-1 flex items-center gap-1">
-                        <User className="w-3 h-3" /> Madre
-                      </p>
-                      <p className="text-base font-bold text-zinc-900">{animal.madre}</p>
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-zinc-300 rounded-lg p-4 bg-zinc-50">
-                      <p className="text-xs text-zinc-400 font-medium">Madre no registrada</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="reproduccion" className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                    <Heart className="w-4 h-4" /> Historial de Montas
-                  </h3>
-                  {!readOnly && (
-                    <Link href={`/reproduccion/nuevo?animalId=${animal.id}`}>
-                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                        <Plus className="w-4 h-4 mr-1" />
-                        Registrar Monta
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-
-                {animal.montas && animal.montas.length > 0 ? (
-                  <div className="space-y-3">
-                    {animal.montas.map((monta) => (
-                      <div key={monta.id} className="border border-zinc-200 rounded-lg p-4">
-                        <p className="text-sm font-medium text-zinc-900">{monta.tipo}</p>
-                        <p className="text-xs text-zinc-500 mt-1">
-                          Fecha: {formatFecha(monta.fecha)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center">
-                    <Heart className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                    <p className="text-sm text-zinc-500">Sin registros de montas</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="salud" className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Tratamientos Activos
-                  </h3>
-                  {!readOnly && (
-                    <Button 
-                      size="sm" 
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                      onClick={handleNuevoTratamiento}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Nuevo Tratamiento
-                    </Button>
-                  )}
-                </div>
-
-                {cargandoTratamientos ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
-                  </div>
-                ) : tratamientosActivos.length > 0 ? (
-                  <div className="space-y-3">
-                    {tratamientosActivos.map((t) => (
-                      <div key={t.id} className="border border-zinc-200 rounded-lg p-4 bg-white">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            {getIconoTratamiento(t.tipo_tratamiento?.nombre)}
-                            <div>
-                              <p className="text-sm font-medium text-zinc-900">
-                                {t.tipo_tratamiento?.nombre || 'Tratamiento'}
-                              </p>
-                              <p className="text-xs text-zinc-500 mt-1">
-                                {formatFecha(t.fecha)}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge className={getEstadoTratamientoColor(t.estado)}>
-                            <span className="flex items-center gap-1">
-                              {getEstadoIcono(t.estado)}
-                              {t.estado}
-                            </span>
-                          </Badge>
-                        </div>
-                        {t.descripcion && (
-                          <p className="text-xs text-zinc-600 mt-2 border-t pt-2">
-                            {t.descripcion}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center bg-white">
-                    <Stethoscope className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                    <p className="text-sm text-zinc-500">No hay tratamientos activos</p>
-                  </div>
-                )}
-              </div>
-
-              {tratamientosHistorial.length > 0 && (
-                <div className="space-y-4 pt-6 border-t border-zinc-200">
-                  <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Historial
-                  </h3>
-                  <div className="space-y-3">
-                    {tratamientosHistorial.map((t) => (
-                      <div key={t.id} className="border border-zinc-200 rounded-lg p-4 bg-zinc-50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            {getIconoTratamiento(t.tipo_tratamiento?.nombre)}
-                            <div>
-                              <p className="text-sm font-medium text-zinc-900">
-                                {t.tipo_tratamiento?.nombre || 'Tratamiento'}
-                              </p>
-                              <p className="text-xs text-zinc-500 mt-1">
-                                {formatFecha(t.fecha)}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge className={getEstadoTratamientoColor(t.estado)}>
-                            <span className="flex items-center gap-1">
-                              {getEstadoIcono(t.estado)}
-                              {t.estado}
-                            </span>
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="produccion" className="space-y-6">
-              {animal.sexo === 'Hembra' ? (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" /> Producción de Leche
-                  </h3>
-
-                  {animal.produccionDiaria ? (
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-6 border border-emerald-200">
-                      <p className="text-xs text-emerald-600 font-medium mb-1">Producción Diaria</p>
-                      <p className="text-4xl font-bold text-emerald-900">
-                        {animal.produccionDiaria}
-                        <span className="text-lg ml-2">L/día</span>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center">
-                      <TrendingUp className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                      <p className="text-sm text-zinc-500">Sin datos de producción</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-zinc-900">Historial de Pesajes</h4>
-                    {animal.pesajes && animal.pesajes.length > 0 ? (
-                      <div className="space-y-2">
-                        {animal.pesajes.map((pesaje) => (
-                          <div key={pesaje.id} className="border border-zinc-200 rounded-lg p-3">
-                            <p className="text-sm font-medium text-zinc-900">{pesaje.peso} kg</p>
-                            <p className="text-xs text-zinc-500">{formatFecha(pesaje.fecha)}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="border border-dashed border-zinc-300 rounded-lg p-6 text-center">
-                        <Scale className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                        <p className="text-sm text-zinc-500">Sin pesajes registrados</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="border border-dashed border-zinc-300 rounded-lg p-12 text-center">
-                  <TrendingUp className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-                  <p className="text-sm text-zinc-500">
-                    Datos de producción no disponibles para machos
-                  </p>
-                </div>
-              )}
-            </TabsContent>
           </Tabs>
         </div>
+        
+        <Modal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          title="Eliminar Animal"
+          description={`¿Está seguro de eliminar al animal "${animal.nombre} (${animal.arete})"? Esta acción no se puede deshacer.`}
+          variant="destructive"
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          loading={deleting}
+          onConfirm={handleDelete}
+        />
       </SheetContent>
     </Sheet>
   );

@@ -39,14 +39,15 @@ export function SaludFilters({
   const [searchTerm, setSearchTerm] = useState('');
   const [mesSeleccionado, setMesSeleccionado] = useState<string>('todos');
 
-  // Efecto para notificar cambios
   useEffect(() => {
-    onFiltersChange?.({
+    const filters = {
       tipos: selectedTipos,
       estados: selectedEstados,
       search: searchTerm,
       mes: mesSeleccionado !== 'todos' ? mesSeleccionado : undefined,
-    });
+    };
+    
+    onFiltersChange?.(filters);
   }, [selectedTipos, selectedEstados, searchTerm, mesSeleccionado, onFiltersChange]);
 
   const handleAddTipo = (tipo: string) => {
@@ -94,11 +95,14 @@ export function SaludFilters({
           Búsqueda
         </label>
         <Input
-          placeholder="Buscar por arete, nombre o tratamiento..."
+          placeholder="Buscar por número de tratamiento, arete, nombre o tipo..."
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="bg-white"
         />
+        <p className="text-xs text-zinc-400 mt-1">
+          Ej: TRAT-0001, arete, nombre del animal o tipo de tratamiento
+        </p>
       </div>
 
       {/* Filtro por Mes */}

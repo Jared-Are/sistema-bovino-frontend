@@ -268,7 +268,6 @@ export function ProduccionSection() {
         registro={registroSeleccionado}
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-        onDelete={handleDelete}
       />
     </div>
   );
