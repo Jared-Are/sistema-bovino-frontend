@@ -108,7 +108,7 @@ export default function PantallaPartosPage() {
 
             if (!res.ok) throw new Error(resData.message || "Error al guardar el parto");
 
-            toast({ title: "¡Parto Exitoso!", description: "El registro ha sido procesado correctamente.", className: "bg-emerald-600 text-white" });
+            toast({ title: "¡Parto Exitoso!", description: "El registro ha sido procesado correctamente.", className: "bg-green-600 text-white" });
             router.push("/reproduccion");
         } catch (err: any) {
             if (err instanceof z.ZodError) {

@@ -17,7 +17,6 @@ import {
     Calendar,
     Weight,
     Scale,
-    Droplets,
     AlertCircle
 } from "lucide-react";
 import Link from "next/link";
@@ -55,17 +54,19 @@ const animalSchema = z.object({
     fechaDestete: z.string()
         .optional()
         .refine(val => !val || val <= fechaHoy, "La fecha de destete no puede ser futura"),
-    pesoNacimiento: z.coerce.number()
+    pesoNacimiento: z.preprocess(
+        (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+        z.number({ required_error: "El peso de nacimiento es requerido" })
         .min(20, "El peso mínimo al nacer es 20 kg.")
         .max(50, "El peso máximo al nacer es 50 kg.")
-        .refine(val => val > 0, "El peso de nacimiento es requerido"),
-    pesoActual: z.coerce.number()
+    ),
+    pesoActual: z.preprocess(
+        (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+        z.number()
         .min(20, "El peso mínimo es 20 kg.")
         .max(800, "El peso máximo es 800 kg.")
-        .optional(),
-    animalMadreId: z.string().optional(),
-    animalPadreId: z.string().optional(),
-
+        .optional()
+    )
 });
 
 type Raza = { raza_id: number; nombre: string; };
@@ -99,9 +100,7 @@ export default function NuevoAnimalPage() {
         fechaNacimiento: fechaHoy,
         fechaDestete: "",
         pesoNacimiento: "",
-        pesoActual: "",
-        animalMadreId: "",
-        animalPadreId: "",
+        pesoActual: ""
     });
 
     useEffect(() => {
@@ -221,79 +220,91 @@ export default function NuevoAnimalPage() {
         setLoading(true);
 
         try {
-             if (formData.fechaDestete && formData.fechaDestete < formData.fechaNacimiento) {
-            setFieldErrors(prev => ({
-                ...prev,
-                fechaDestete: "La fecha de destete no puede ser anterior a la fecha de nacimiento"
-            }));
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('No autorizado');
+
+            const checkResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/animales/check-arete?arete=${formData.arete}`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            
+            if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            if (checkData.exists) {
+                setFieldErrors(prev => ({ ...prev, arete: `El arete "${formData.arete}" ya está registrado` }));
+                setLoading(false);
+                return;
+            }
+            }
+
+            if (formData.fechaDestete && formData.fechaDestete < formData.fechaNacimiento) {
+            setFieldErrors(prev => ({ ...prev, fechaDestete: "La fecha de destete no puede ser anterior a la fecha de nacimiento" }));
             setLoading(false);
             return;
-        }
+            }
+            
             const datosParaValidar = {
-                ...formData,
-                pesoNacimiento: formData.pesoNacimiento ? Number(formData.pesoNacimiento) : undefined,
-                pesoActual: formData.pesoActual ? Number(formData.pesoActual) : undefined,
+            ...formData,
+            pesoNacimiento: formData.pesoNacimiento ? Number(formData.pesoNacimiento) : undefined,
+            pesoActual: formData.pesoActual ? Number(formData.pesoActual) : undefined,
             };
 
             const valid = animalSchema.parse(datosParaValidar);
 
             const payload = {
-                arete: valid.arete.toUpperCase(),
-                nombre: valid.nombre || null,
-                sexo: valid.sexo,
-                raza_id: Number(valid.razaId),
-                lote_id: valid.loteId === "sin-lote" ? null : valid.loteId ? Number(valid.loteId) : null,
-                potrero_id: valid.potreroId === "sin-potrero" ? null : valid.potreroId ? Number(valid.potreroId) : null,
-                fecha_nacimiento: valid.fechaNacimiento,
-                fecha_destete: valid.fechaDestete || null,
-                peso_nacimiento: valid.pesoNacimiento,
-                peso_actual: valid.pesoActual || valid.pesoNacimiento,
-                animal_madre_id: valid.animalMadreId === "sin-madre" ? null : valid.animalMadreId ? Number(valid.animalMadreId) : null,
-                animal_padre_id: valid.animalPadreId === "sin-padre" ? null : valid.animalPadreId ? Number(valid.animalPadreId) : null,
-                imagen: fotoUrl || null,
+            arete: valid.arete.toUpperCase(),
+            nombre: valid.nombre || null,
+            sexo: valid.sexo,
+            raza_id: Number(valid.razaId),
+            lote_id: valid.loteId === "sin-lote" ? null : valid.loteId ? Number(valid.loteId) : null,
+            potrero_id: valid.potreroId === "sin-potrero" ? null : valid.potreroId ? Number(valid.potreroId) : null,
+            fecha_nacimiento: valid.fechaNacimiento,
+            fecha_destete: valid.fechaDestete || null,
+            peso_nacimiento: valid.pesoNacimiento,
+            peso_actual: valid.pesoActual || valid.pesoNacimiento,
+            imagen: fotoUrl || null,
             };
 
-            const token = localStorage.getItem('token');
-            if (!token) {
-                router.push('/');
-                return;
-            }
-
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload),
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload),
             });
 
             const responseText = await response.text();
 
             if (!response.ok) {
-                let errorData;
-                try { errorData = JSON.parse(responseText); } 
-                catch { errorData = { message: responseText }; }
-                throw new Error(errorData.message || "Error al registrar");
-            }
-
-            toast({ 
-                title: "¡Animal Registrado!", 
-                description: `Animal con arete ${valid.arete} registrado.`,
-                className: "bg-green-600 text-white" 
-            });
+            let errorData;
+            try { errorData = JSON.parse(responseText); } 
+            catch { errorData = { message: responseText }; }
             
+            if (errorData.message?.includes('arete') || errorData.message?.includes('registrado')) {
+                setFieldErrors(prev => ({ ...prev, arete: errorData.message }));
+                setLoading(false);
+                return;
+            }
+            throw new Error(errorData.message || "Error al registrar");
+            }
+            
+            toast({ 
+            title: `¡Animal Registrado!`, 
+            description: "El animal se registró correctamente.",
+            className: "bg-green-600 text-white" 
+            });
             router.push("/animales");
 
         } catch (err: any) {
             if (err instanceof z.ZodError) {
-                const errors: Record<string, string> = {};
-                err.errors.forEach(e => {
-                    if (e.path[0]) errors[e.path[0].toString()] = e.message;
-                });
-                setFieldErrors(errors);
-            } else {
-                toast({ title: "Error", description: err.message, variant: "destructive" });
+            const errors: Record<string, string> = {};
+            err.errors.forEach(e => {
+                if (e.path[0]) errors[e.path[0].toString()] = e.message;
+            });
+            setFieldErrors(errors);
+            } else if (!fieldErrors.arete) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
             }
         } finally {
             setLoading(false);
@@ -583,59 +594,6 @@ export default function NuevoAnimalPage() {
                                     />
                                 </div>
                                 <p className="text-xs text-zinc-500 mt-1">Si no se ingresa, se usará el peso al nacer</p>
-                            </div>
-                        </div>
-
-
-                        {/* Padres */}
-                        <div className="border-t pt-4">
-                            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                <Droplets className="w-4 h-4" /> Genealogía
-                            </h3>
-                            <div className="grid md:grid-cols-2 gap-4">
-                                {/* Madre - Solo HEMBRAS */}
-                                <div>
-                                    <Label>Madre</Label>
-                                    <Select value={formData.animalMadreId} 
-                                        onValueChange={(v) => setFormData({...formData, animalMadreId: v})}>
-                                        <SelectTrigger><SelectValue placeholder="Selecciona la madre" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="sin-madre">Sin madre</SelectItem>
-                                            {animales
-                                                .filter(a => 
-                                                    a.sexo?.toLowerCase() === 'hembra' && 
-                                                    a.animal_id !== Number(formData.animalPadreId)
-                                                )
-                                                .map((a) => (
-                                                    <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                        {a.arete} - {a.nombre || 'Sin nombre'}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Padre - Solo MACHOS */}
-                                <div>
-                                    <Label>Padre</Label>
-                                    <Select value={formData.animalPadreId} 
-                                        onValueChange={(v) => setFormData({...formData, animalPadreId: v})}>
-                                        <SelectTrigger><SelectValue placeholder="Selecciona el padre" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="sin-padre">Sin padre</SelectItem>
-                                            {animales
-                                                .filter(a => 
-                                                    a.sexo?.toLowerCase() === 'macho' && 
-                                                    a.animal_id !== Number(formData.animalMadreId)
-                                                )
-                                                .map((a) => (
-                                                    <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                        {a.arete} - {a.nombre || 'Sin nombre'}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
                             </div>
                         </div>
 

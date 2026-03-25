@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useId } from 'react';
 
 interface ModalProps {
   open: boolean;
@@ -32,25 +33,27 @@ export default function Modal({
   loading = false,
   onConfirm,
 }: ModalProps) {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'destructive':
-        return {
-          confirmButton: 'bg-red-600 hover:bg-red-700 text-white',
-          icon: <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />,
-        };
-      case 'warning':
-        return {
-          confirmButton: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-          icon: <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />,
-        };
-      default:
-        return {
-          confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white',
-          icon: null,
-        };
-    }
-  };
+  const descriptionId = useId();
+
+const getVariantStyles = () => {
+  switch (variant) {
+    case 'destructive':
+      return {
+        confirmButton: 'bg-red-600 hover:bg-red-700 text-white !bg-red-600', // 👈 Forzar con !important
+        icon: <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />,
+      };
+    case 'warning':
+      return {
+        confirmButton: 'bg-yellow-600 hover:bg-yellow-700 text-white !bg-yellow-600',
+        icon: <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />,
+      };
+    default:
+      return {
+        confirmButton: 'bg-emerald-600 hover:bg-emerald-700 text-white !bg-emerald-600',
+        icon: null,
+      };
+  }
+};
 
   const styles = getVariantStyles();
 
@@ -66,9 +69,6 @@ export default function Modal({
       onOpenChange(false);
     }
   };
-
-  // Generar un ID único para la descripción
-  const descriptionId = `modal-description-${Math.random().toString(36).substr(2, 9)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,7 +94,7 @@ export default function Modal({
           </Button>
           <Button
             type="button"
-            className={styles.confirmButton}
+            variant="destructive"
             onClick={handleConfirm}
             disabled={loading}
           >

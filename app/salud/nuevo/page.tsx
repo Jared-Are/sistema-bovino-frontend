@@ -124,7 +124,7 @@ export default function NuevoTratamientoPage() {
                 animal_id: Number(valid.animalId),
                 fecha: valid.fecha,
                 descripcion: valid.descripcion || null,
-                estado: valid.estado
+                estado: "PENDIENTE"
             };
 
             const token = localStorage.getItem('token');
@@ -280,19 +280,6 @@ export default function NuevoTratamientoPage() {
                                     </p>
                                 )}
                                 <p className="text-xs text-zinc-500">Solo se permiten fechas desde hoy</p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Estado</Label>
-                                <Select value={formData.estado} onValueChange={(v) => setFormData({...formData, estado: v})}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                                        <SelectItem value="ACTIVO">Activo</SelectItem>
-                                        <SelectItem value="COMPLETADO">Completado</SelectItem>
-                                        <SelectItem value="CANCELADO">Cancelado</SelectItem>
-                                    </SelectContent>
-                                </Select>
                             </div>
                         </div>
 

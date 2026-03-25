@@ -129,7 +129,7 @@ export default function NuevoRegistroReproduccionPage() {
                 throw new Error(errorData.message || "Error al registrar servicio reproductivo");
             }
 
-            toast({ title: "¡Registro Exitoso!", description: `El servicio se guardó correctamente.`, className: "bg-emerald-600 text-white" });
+            toast({ title: "¡Registro Exitoso!", description: `El servicio se guardó correctamente.`, className: "bg-green-600 text-white" });
             router.push("/reproduccion"); 
 
         } catch (err: any) {

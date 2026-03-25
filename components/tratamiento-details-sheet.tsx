@@ -8,22 +8,15 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent} from '@/components/ui/tabs';
 import {
-  Calendar,
-  Stethoscope,
-  Syringe,
-  Pill,
-  FileText,
   Pencil,
   Trash2,
   Activity,
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle,
-  User,
-  Hash
+  XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import Modal from "./ui/modal";
@@ -90,12 +83,6 @@ export function TratamientoDetailsSheet({
     }
   };
 
-  const getIcono = (tipoNombre?: string) => {
-    if (tipoNombre?.toLowerCase().includes("vacuna")) return <Syringe className="h-5 w-5" />;
-    if (tipoNombre?.toLowerCase().includes("desparasit")) return <Pill className="h-5 w-5" />;
-    return <Stethoscope className="h-5 w-5" />;
-  };
-
   const formatFecha = (fecha: string) => {
     return new Date(fecha).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -153,7 +140,6 @@ export function TratamientoDetailsSheet({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    {getIcono(tratamiento.tipo_tratamiento?.nombre)}
                     <SheetTitle className="text-3xl font-bold text-zinc-900">
                       {tratamiento.tipo_tratamiento?.nombre || 'Tratamiento'}
                     </SheetTitle>
@@ -161,7 +147,6 @@ export function TratamientoDetailsSheet({
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {tratamiento.numero_tratamiento && (
                       <Badge variant="outline" className="bg-white border-zinc-300 font-mono">
-                        <Hash className="w-3 h-3 mr-1" />
                         {tratamiento.numero_tratamiento}
                       </Badge>
                     )}
@@ -182,19 +167,16 @@ export function TratamientoDetailsSheet({
                 <div className="flex gap-2 ml-4">
                   <Link href={`/salud/${tratamiento.id}`}>
                     <Button size="sm" variant="outline" className="gap-2 bg-white">
-                      <Pencil className="w-4 h-4" />
-                      <span className="hidden sm:inline">Editar</span>
+                      <Pencil className="aw-4 h-4" />
                     </Button>
                   </Link>
                   <Button 
                     size="sm" 
                     variant="destructive" 
-                    className="gap-2 bg-red-600 hover:bg-red-700 text-white"
                     onClick={() => setModalOpen(true)}
                     disabled={deleting}
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">{deleting ? "Borrando..." : "Eliminar"}</span>
                   </Button>
                 </div>
               </div>
@@ -203,7 +185,6 @@ export function TratamientoDetailsSheet({
                 <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
                   <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Tipo</p>
                   <div className="flex items-center gap-1 mt-1 text-zinc-900 font-bold text-lg">
-                    {getIcono(tratamiento.tipo_tratamiento?.nombre)}
                     {tratamiento.tipo_tratamiento?.nombre || 'Sin tipo'}
                   </div>
                 </div>
@@ -218,79 +199,26 @@ export function TratamientoDetailsSheet({
 
         <div className="p-6">
           <Tabs defaultValue="detalle" className="w-full">
-            <TabsList className="flex gap-2 mb-6 bg-transparent h-auto p-0 flex-wrap">
-              <TabsTrigger 
-                value="detalle" 
-                className="flex-1 py-2 px-4 rounded-lg border border-zinc-300 bg-white shadow-sm data-[state=active]:border-zinc-900 data-[state=active]:text-zinc-900 transition-all"
-              >
-                Detalles del Tratamiento
-              </TabsTrigger>
-            </TabsList>
 
             <TabsContent value="detalle" className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <Hash className="w-4 h-4" /> Número de Tratamiento
-                </h3>
-
-                <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                  <p className="text-lg font-bold text-zinc-900 font-mono">
-                    {tratamiento.numero_tratamiento || 'No asignado'}
-                  </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-zinc-500">Número de Tratamiento</p>
+                  <p className="font-medium">{tratamiento.numero_tratamiento || 'No asignado'}</p>
+                </div>
+               <div>
+                  <p className="text-sm text-zinc-500">Animal</p>
+                  <p className="font-medium">{tratamiento.animal?.nombre || 'No asignado'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Detalle del Tratamiento</p>
+                  <p className="font-medium">{tratamiento.descripcion || 'No asignado'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-500">Fecha de Aplicación</p>
+                  <p className="font-medium">{tratamiento.fecha}</p>
                 </div>
               </div>
-
-              {/* Información del Animal */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <User className="w-4 h-4" /> Animal
-                </h3>
-
-                <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs text-zinc-500 font-medium mb-1">Arete</p>
-                      <p className="text-lg font-bold text-zinc-900">{tratamiento.animal?.arete || 'Sin arete'}</p>
-                      <p className="text-sm text-zinc-600 mt-1">
-                        {tratamiento.animal?.nombre || 'Sin nombre'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detalles del Tratamiento */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Detalles del Tratamiento
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Tipo</p>
-                    <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                      {getIcono(tratamiento.tipo_tratamiento?.nombre)}
-                      {tratamiento.tipo_tratamiento?.nombre || 'Sin tipo'}
-                    </p>
-                  </div>
-
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-1">Fecha de Aplicación</p>
-                    <p className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-zinc-400" />
-                      {formatFecha(tratamiento.fecha)}
-                    </p>
-                  </div>
-                </div>
-
-                {tratamiento.descripcion && (
-                  <div className="border border-zinc-200 rounded-lg p-4 bg-white">
-                    <p className="text-xs text-zinc-500 font-medium mb-2">Descripción / Observaciones</p>
-                    <p className="text-sm text-zinc-700 whitespace-pre-wrap">{tratamiento.descripcion}</p>
-                  </div>
-                )}
-              </div>
-
               {/* Estado */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide flex items-center gap-2">

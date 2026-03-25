@@ -84,13 +84,11 @@ export function ProduccionDetailsSheet({
               <Link href={`/produccion/${registro.id}`}>
                 <Button variant="outline" size="sm" className="h-9 gap-2 text-zinc-600 hover:text-emerald-600 hover:border-emerald-200">
                   <Pencil className="w-4 h-4" />
-                  <span className="font-medium">Editar</span>
                 </Button>
               </Link>
               <Button 
                 size="sm" 
                 variant="destructive" 
-                className="gap-2 bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => setModalOpen(true)}
                 disabled={deleting}
               >

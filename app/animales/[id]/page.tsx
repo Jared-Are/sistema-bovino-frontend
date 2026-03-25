@@ -214,13 +214,6 @@ export default function EditarAnimalPage() {
             if (formData.animalPadreId) payload.animal_padre_id = formData.animalPadreId === "sin-padre" ? null : Number(formData.animalPadreId);
             if (fotoUrl !== undefined) payload.imagen = fotoUrl || null;
 
-            // Si no hay cambios, mostrar mensaje
-            if (Object.keys(payload).length === 0) {
-                toast({ title: "Sin cambios", description: "No hay cambios para guardar" });
-                setSaving(false);
-                return;
-            }
-
             const token = localStorage.getItem('token');
             if (!token) throw new Error('No autorizado');
 
@@ -368,6 +361,33 @@ export default function EditarAnimalPage() {
                                     {formData.pesoNacimiento} kg
                                 </div>
                             </div>
+                            <div>
+                                <Label className="text-gray-600">Padres</Label>
+                                <div className="p-2 border border-gray-200 rounded-md bg-white space-y-1">
+                                    {formData.animalMadreId && formData.animalMadreId !== "sin-madre" ? (
+                                        <>
+                                            <div className="text-sm">
+                                                <span className="font-medium">Madre:</span> {
+                                                    animales.find(a => a.animal_id.toString() === formData.animalMadreId)?.arete
+                                                } - {
+                                                    animales.find(a => a.animal_id.toString() === formData.animalMadreId)?.nombre || 'Sin nombre'
+                                                }
+                                            </div>
+                                            <div className="text-sm">
+                                                <span className="font-medium">Padre:</span> {
+                                                    formData.animalPadreId && formData.animalPadreId !== "sin-padre" 
+                                                        ? `${animales.find(a => a.animal_id.toString() === formData.animalPadreId)?.arete} - ${
+                                                            animales.find(a => a.animal_id.toString() === formData.animalPadreId)?.nombre || 'Sin nombre'
+                                                        }`
+                                                        : 'No especificado'
+                                                }
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-sm text-gray-500">No especificados</div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Campos editables */}
@@ -453,57 +473,6 @@ export default function EditarAnimalPage() {
                                             value={formData.pesoActual}
                                             onChange={(e) => setFormData({...formData, pesoActual: e.target.value})}
                                         />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Padres */}
-                            <div className="border-t pt-4">
-                                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                    <Droplets className="w-4 h-4" /> Genealogía
-                                </h3>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Madre</Label>
-                                        <Select 
-                                            value={formData.animalMadreId} 
-                                            onValueChange={(v) => setFormData({...formData, animalMadreId: v})}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecciona la madre" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="sin-madre">Sin madre</SelectItem>
-                                                {animales
-                                                    .filter(a => a.sexo?.toLowerCase() === 'hembra')
-                                                    .map((a) => (
-                                                        <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                            {a.arete} - {a.nombre || 'Sin nombre'}
-                                                        </SelectItem>
-                                                    ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Padre</Label>
-                                        <Select 
-                                            value={formData.animalPadreId} 
-                                            onValueChange={(v) => setFormData({...formData, animalPadreId: v})}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecciona el padre" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="sin-padre">Sin padre</SelectItem>
-                                                {animales
-                                                    .filter(a => a.sexo?.toLowerCase() === 'macho')
-                                                    .map((a) => (
-                                                        <SelectItem key={a.animal_id} value={a.animal_id.toString()}>
-                                                            {a.arete} - {a.nombre || 'Sin nombre'}
-                                                        </SelectItem>
-                                                    ))}
-                                            </SelectContent>
-                                        </Select>
                                     </div>
                                 </div>
                             </div>

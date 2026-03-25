@@ -110,13 +110,11 @@ export function ReproduccionDetailsSheet({
                   </Link>
                   <Button 
                     size="sm" 
-                    variant="destructive" 
-                    className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                    variant="destructive"
                     onClick={() => setModalOpen(true)}
                     disabled={deleting}
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">{deleting ? "Borrando..." : "Eliminar"}</span>
                   </Button>
                 </div>
               </div>
