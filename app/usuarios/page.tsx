@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
 import Modal from '@/components/ui/modal';
 
 type Usuario = {
@@ -446,8 +445,6 @@ export default function UsuariosPage() {
         loading={deleting}
         onConfirm={handleDelete}
       />
-      
-      <Toaster />
-    </div>
+      </div>
   );
 }

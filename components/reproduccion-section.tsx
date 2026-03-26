@@ -14,7 +14,6 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 const mapBackendToFrontend = (
   item: ReproduccionBackend,
 ): RegistroReproduccion => ({
@@ -184,7 +183,6 @@ export function ReproduccionSection() {
         onOpenChange={setIsSheetOpen}
         onSuccess={cargarRegistros}
       />
-      <Toaster />
     </div>
   );
 }

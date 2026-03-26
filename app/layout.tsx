@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import ClientLayout from './client-layout'
 import './globals.css'
-
+import { Toaster } from '@/components/ui/toaster';
 const geistSans = Geist({
   subsets: ['latin'],
   variable: '--font-geist-sans',
@@ -57,6 +57,7 @@ export default function RootLayout({
           <ClientLayout>{children}</ClientLayout>
         </ThemeProvider>
         <Analytics />
+        <Toaster />
       </body>
     </html>
   )

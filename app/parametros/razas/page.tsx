@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
 type Raza = {
   raza_id: number;
   nombre: string;
@@ -186,7 +185,7 @@ export default function RazasPage() {
           )}
         </CardContent>
       </Card>
-      <Toaster />
+      
     </div>
   );
 }

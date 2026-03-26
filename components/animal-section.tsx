@@ -9,7 +9,6 @@ import { AnimalDetailsSheet } from './animal-details-sheet';
 import { AnimalCards } from './animal-cards';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 
 type SexoAnimal = 'Macho' | 'Hembra';
 
@@ -286,8 +285,6 @@ export function AnimalSection() {
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
       />
-      
-      <Toaster />
-    </div>
+      </div>
   );
 }

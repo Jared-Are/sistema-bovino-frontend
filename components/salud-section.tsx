@@ -19,7 +19,6 @@ import { KanbanSalud } from "./kanban-salud";
 import { CalendarioSalud } from "./calendario-salud";
 import { TratamientoDetailsSheet } from "./tratamiento-details-sheet";
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 
 // En salud-section.tsx, actualiza el tipo
 type Tratamiento = {
@@ -326,7 +325,6 @@ export function SaludSection() {
         onOpenChange={setIsSheetOpen}
         onDelete={cargarTratamientos}
       />
-      <Toaster /> 
     </div>
   );
 }
