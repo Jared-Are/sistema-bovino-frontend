@@ -439,7 +439,7 @@ const cargarPadres = async () => {
                           <p className="text-xs text-zinc-500 mb-1">Madre</p>
                           <p className="font-bold text-emerald-700">{animalMadre.nombre}</p>
                           <p className="text-sm text-zinc-600">Arete: {animalMadre.arete}</p>
-                          <p className="text-xs text-zinc-500 mt-1">Raza: {typeof animalMadre.raza === 'object' ? animalMadre.raza.nombre : animalMadre.raza}</p>
+                          <p className="text-xs text-zinc-500 mt-1">Raza: {(animalMadre?.raza as any)?.nombre || animalMadre?.raza || 'No registrada'}</p>
                         </div>
                       )}
                       {animalPadre && (
@@ -450,7 +450,7 @@ const cargarPadres = async () => {
                           <p className="text-xs text-zinc-500 mb-1">Padre</p>
                           <p className="font-bold text-emerald-700">{animalPadre.nombre}</p>
                           <p className="text-sm text-zinc-600">Arete: {animalPadre.arete}</p>
-                          <p className="text-xs text-zinc-500 mt-1">Raza: {typeof animalPadre.raza === 'object' ? animalPadre.raza.nombre : animalPadre.raza}</p>
+                         <p className="text-xs text-zinc-500 mt-1">Raza: {(animalPadre?.raza as any)?.nombre || animalPadre?.raza || 'No registrada'}</p>
                         </div>
                       )}
                     </div>

@@ -90,13 +90,14 @@ export default function PantallaPartosPage() {
         }
     };
 
-    const handleRegistrarParto = async () => {
+   const handleRegistrarParto = async () => {
         if (!selectedDiag) return toast({ title: "Atención", description: "Selecciona una vaca de la lista.", variant: "destructive" });
         
         setFieldErrors({});
         setLoading(true);
 
         try {
+            // 1. Zod intenta validar. Si falla, salta directamente al "catch"
             const valid = partoSchema.parse(formParto);
             const token = localStorage.getItem('token');
             const payload = {
@@ -113,20 +114,36 @@ export default function PantallaPartosPage() {
                 body: JSON.stringify(payload)
             });
 
-            const resData = await res.json();
+            // Blindaje por si el backend se cae y manda texto en lugar de JSON
+            const isJson = res.headers.get("content-type")?.includes("application/json");
+            let resData;
+            if (isJson) {
+                resData = await res.json();
+            } else {
+                throw new Error("El servidor falló de forma inesperada (Posible error 500).");
+            }
+
             if (!res.ok) throw new Error(resData.message || "Error al guardar el parto");
 
-            // Actualizamos la clase del toast a verde como pidió tu compañero
             toast({ title: "¡Parto Exitoso!", description: "El registro ha sido procesado correctamente.", className: "bg-green-600 text-white" });
             router.push("/reproduccion");
         } catch (err: any) {
             if (err instanceof z.ZodError) {
+                // Si el error es de Zod, pintamos las letras rojas...
                 const errors: Record<string, string> = {};
                 err.errors.forEach(e => {
                     if (e.path[0]) errors[e.path[0].toString()] = e.message;
                 });
                 setFieldErrors(errors);
+                
+                // 👇 ¡Y LANZAMOS LA ALERTA PARA QUE SEPAS QUE ZOD TE BLOQUEÓ! 👇
+                toast({ 
+                    title: "Datos incompletos", 
+                    description: "Por favor, llena los campos obligatorios en rojo.", 
+                    variant: "destructive" 
+                });
             } else {
+                // Si el error es del Backend (Ej. parto duplicado)
                 toast({ title: "Error del servidor", description: err.message, variant: "destructive" });
             }
         } finally {
