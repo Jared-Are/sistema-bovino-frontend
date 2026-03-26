@@ -62,7 +62,7 @@ const KPICard = ({ title, value, subtitle, icon: Icon, color, trend }: any) => {
     };
     
     return (
-        <Card className="hover:shadow-md transition-all border-l-4 border-l-emerald-500">
+        <Card className="hover:shadow-md transition-all">
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>
@@ -265,7 +265,6 @@ export function DashboardSection() {
                 <div>
                     <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900">
                          PANEL DE REPORTES
-                        <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
                     </h2>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
