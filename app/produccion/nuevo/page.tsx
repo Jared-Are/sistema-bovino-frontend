@@ -36,7 +36,6 @@ type AnimalSimple = {
     arete: string;
     nombre: string;
     sexo: string;
-    estado_reproductivo: string;
     fecha_nacimiento: string;
     peso_actual: number;
 };
@@ -47,6 +46,7 @@ export default function NuevaProduccionPage() {
     const [loading, setLoading] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
     const [animales, setAnimales] = useState<AnimalSimple[]>([]);
+    const [animalIdsPreñadas, setAnimalIdsPreñadas] = useState<Set<number>>(new Set());
     const [maxId, setMaxId] = useState(0);
 
     const [tipo, setTipo] = useState<'leche' | 'carne'>('leche');
@@ -70,13 +70,14 @@ export default function NuevaProduccionPage() {
 
     const filteredAnimales = animales.filter(a => {
         if (tipo === 'leche') {
-            return a.sexo === 'Hembra' && (
-                a.estado_reproductivo?.toLowerCase() === 'lactando' ||
-                a.estado_reproductivo?.toLowerCase() === 'parida'
-            );
+            // Leche: Hembra con madurez sexual (>= 2 años)
+            return a.sexo === 'Hembra' && calculateAge(a.fecha_nacimiento) >= 2;
         } else {
-            // Carne: Macho >= 6 años
-            return a.sexo === 'Macho' && calculateAge(a.fecha_nacimiento) >= 6;
+            // Carne: Macho o Hembra > 4 años, excluyendo hembras preñadas
+            const age = calculateAge(a.fecha_nacimiento);
+            if (age <= 4) return false;
+            if (a.sexo === 'Hembra' && animalIdsPreñadas.has(a.animal_id)) return false;
+            return true;
         }
     });
 
@@ -107,6 +108,24 @@ export default function NuevaProduccionPage() {
                 if (animalesRes.ok) {
                     const data = await animalesRes.json();
                     setAnimales(Array.isArray(data) ? data : data.data || []);
+                }
+
+                // Traer diagnósticos para identificar hembras preñadas
+                const diagRes = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/reproduccion/diagnosticos`,
+                    { headers }
+                );
+                if (diagRes.ok) {
+                    const diagData = await diagRes.json();
+                    if (Array.isArray(diagData)) {
+                        const idsPreñadas = new Set<number>();
+                        diagData.forEach((d: any) => {
+                            if (d.resultado === 'Positivo' && d.monta?.hembra?.animal_id) {
+                                idsPreñadas.add(d.monta.hembra.animal_id);
+                            }
+                        });
+                        setAnimalIdsPreñadas(idsPreñadas);
+                    }
                 }
 
                 // Fetch productions to find max ID for the tag
@@ -279,7 +298,7 @@ export default function NuevaProduccionPage() {
                                     onInvalid={(e) => {
                                         (e.target as HTMLInputElement).setCustomValidity("Por favor, selecciona un animal primero");
                                     }}
-                                    onChange={() => {}} // dummy to avoid react warning
+                                    onChange={() => { }} // dummy to avoid react warning
                                 />
                             </div>
                         </div>
