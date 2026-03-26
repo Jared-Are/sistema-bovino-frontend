@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-
+import { Toaster } from '@/components/ui/toaster';
 type Lote = {
   lote_id: number;
   nombre: string;
@@ -183,6 +183,7 @@ export default function LotesPage() {
           )}
         </CardContent>
       </Card>
+      <Toaster />
     </div>
   );
 }
