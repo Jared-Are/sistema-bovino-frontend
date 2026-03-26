@@ -12,7 +12,6 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-// 👇 FIX TYPESCRIPT: El esquema base y su refinamiento separados
 const basePartoSchema = z.object({
     numero_parto: z.string().min(3, "El código del parto es requerido."),
     tipo_parto: z.enum(["Normal", "Distocico", "Aborto"]),
@@ -55,7 +54,20 @@ export default function PantallaPartosPage() {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
-                setVacasGestantes(Array.isArray(data) ? data.filter((d: any) => d.resultado === 'Positivo') : []);
+                
+                // 👇 BLINDAJE EXTREMO: Solo filtramos si 'data' es un arreglo real.
+                // Y ADEMÁS exigimos que diag.monta Y diag.monta.hembra existan (no sean null)
+                if (Array.isArray(data)) {
+                    const gestantesValidas = data.filter((d: any) => 
+                        d.resultado === 'Positivo' && 
+                        d.monta != null && 
+                        d.monta.hembra != null
+                    );
+                    setVacasGestantes(gestantesValidas);
+                } else {
+                    setVacasGestantes([]);
+                }
+
             } catch (err) {
                 toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
             } finally {
@@ -67,7 +79,6 @@ export default function PantallaPartosPage() {
 
     const validateField = (field: keyof typeof formParto, value: any) => {
         try {
-            // Usamos basePartoSchema aquí
             const fieldSchema = basePartoSchema.shape[field as keyof typeof basePartoSchema.shape];
             if (fieldSchema) fieldSchema.parse(value);
             setFieldErrors(prev => ({ ...prev, [field]: "" }));
@@ -86,9 +97,7 @@ export default function PantallaPartosPage() {
         setLoading(true);
 
         try {
-            // Usamos el esquema completo (partoSchema) para enviar datos
             const valid = partoSchema.parse(formParto);
-
             const token = localStorage.getItem('token');
             const payload = {
                 diagnosticoId: Number(selectedDiag.id),
@@ -105,9 +114,9 @@ export default function PantallaPartosPage() {
             });
 
             const resData = await res.json();
-
             if (!res.ok) throw new Error(resData.message || "Error al guardar el parto");
 
+            // Actualizamos la clase del toast a verde como pidió tu compañero
             toast({ title: "¡Parto Exitoso!", description: "El registro ha sido procesado correctamente.", className: "bg-green-600 text-white" });
             router.push("/reproduccion");
         } catch (err: any) {
@@ -149,7 +158,10 @@ export default function PantallaPartosPage() {
                                 >
                                     <CardContent className="p-4 flex items-center justify-between">
                                         <div>
-                                            <p className="font-bold text-zinc-900">{diag.monta.hembra.arete} - {diag.monta.hembra.nombre}</p>
+                                            {/* 👇 BLINDAJE VISUAL: Usamos el operador '?' para que si algo viene nulo, React no explote */}
+                                            <p className="font-bold text-zinc-900">
+                                                {diag.monta?.hembra?.arete || 'Sin arete'} - {diag.monta?.hembra?.nombre || 'Vaca Eliminada'}
+                                            </p>
                                             <p className="text-xs text-zinc-500">Confirmada el {new Date(diag.fecha_creacion).toLocaleDateString()}</p>
                                         </div>
                                         {selectedDiag?.id === diag.id && <CheckCircle2 className="text-emerald-500 h-5 w-5" />}
