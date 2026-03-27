@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ export default function NuevoTipoPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     nombre: '',
   });
@@ -29,6 +30,7 @@ export default function NuevoTipoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFieldErrors({});
 
     try {
       const valid = tipoSchema.parse(formData);
@@ -46,6 +48,11 @@ export default function NuevoTipoPage() {
 
       if (!response.ok) {
         const error = await response.json();
+        if (error.message?.includes('ya existe')) {
+          setFieldErrors({ nombre: error.message });
+          setLoading(false);
+          return;
+        }
         throw new Error(error.message || 'Error al crear tipo');
       }
       
@@ -88,10 +95,18 @@ export default function NuevoTipoPage() {
                   const val = e.target.value;
                   if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(val)) return;
                   setFormData({ ...formData, nombre: val });
+                  if (fieldErrors.nombre) setFieldErrors({ ...fieldErrors, nombre: '' });
                 }}
                 placeholder="Ej: Vacuna, Desparasitante, Antibiótico..."
+                className={fieldErrors.nombre ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {fieldErrors.nombre && (
+                <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.nombre}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">

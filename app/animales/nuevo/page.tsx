@@ -55,15 +55,25 @@ const animalSchema = z.object({
         .optional()
         .refine(val => !val || val <= fechaHoy, "La fecha de destete no puede ser futura"),
     pesoNacimiento: z.preprocess(
-        (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+        (val) => {
+            if (val === '' || val === null || val === undefined) return undefined;
+            const num = Number(val);
+            if (isNaN(num)) return undefined;
+            return num;
+        },
         z.number({ required_error: "El peso de nacimiento es requerido" })
         .min(20, "El peso mínimo al nacer es 20 kg.")
         .max(50, "El peso máximo al nacer es 50 kg.")
     ),
     pesoActual: z.preprocess(
-        (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+        (val) => {
+            if (val === '' || val === null || val === undefined) return undefined;
+            const num = Number(val);
+            if (isNaN(num)) return undefined;
+            return num;
+        },
         z.number()
-        .min(20, "El peso mínimo es 20 kg.")
+        .min(20, "El peso debe ser al menos 20 kg.")
         .max(800, "El peso máximo es 800 kg.")
         .optional()
     )
@@ -588,11 +598,21 @@ export default function NuevoAnimalPage() {
                                         step="0.1" 
                                         min="20" 
                                         max="800" 
-                                        className="pl-8"
+                                        className={`pl-8 ${fieldErrors.pesoActual ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                                         value={formData.pesoActual}
-                                        onChange={(e) => setFormData({...formData, pesoActual: e.target.value})}
+                                        onChange={(e) =>{
+                                        setFormData({...formData, pesoActual: e.target.value});
+                                        validateField('pesoActual', e.target.value);
+
+                                        }}
                                     />
                                 </div>
+                                {fieldErrors.pesoActual && (
+                                    <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {fieldErrors.pesoActual}
+                                    </p>
+                                )}
                                 <p className="text-xs text-zinc-500 mt-1">Si no se ingresa, se usará el peso al nacer</p>
                             </div>
                         </div>

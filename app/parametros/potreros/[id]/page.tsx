@@ -84,6 +84,24 @@ export default function EditarPotreroPage() {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
+      const checkResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/parametros/potreros/check-nombre?nombre=${encodeURIComponent(valid.nombre)}&excludeId=${id}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        if (checkData.exists) {
+          toast({ 
+            title: "Error", 
+            description: `El potrero "${valid.nombre}" ya está registrado`,
+            variant: "destructive" 
+          });
+          setSaving(false);
+          return;
+        }
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/potreros/${id}`, {
         method: 'PATCH',
         headers: {
