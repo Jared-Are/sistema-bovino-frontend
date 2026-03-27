@@ -90,7 +90,20 @@ export default function PotrerosPage() {
         },
       });
 
-      if (!response.ok) throw new Error('Error al eliminar');
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.message?.includes('hay animales asociados')) {
+          toast({ 
+            title: "❌ No se puede eliminar", 
+            description: error.message,
+            variant: "destructive",
+            duration: 5000,
+          });
+          setModalOpen(false); 
+          return;
+        }
+        throw new Error(error.message || 'Error al eliminar');
+      }
       
       setPotreros(potreros.filter(p => p.potrero_id !== potreroToDelete.potrero_id));
       toast({ 
@@ -98,6 +111,7 @@ export default function PotrerosPage() {
         description: `${potreroToDelete.nombre} ha sido eliminado`,
         duration: 3000,
       });
+      setModalOpen(false);
     } catch (error: any) {
       toast({ 
         title: "❌ Error", 
@@ -107,7 +121,6 @@ export default function PotrerosPage() {
       });
     } finally {
       setDeleting(false);
-      setModalOpen(false);
       setPotreroToDelete(null);
     }
   };

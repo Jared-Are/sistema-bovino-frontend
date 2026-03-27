@@ -86,7 +86,20 @@ export default function LotesPage() {
         },
       });
 
-      if (!response.ok) throw new Error('Error al eliminar');
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.message?.includes('hay animales asociados')) {
+          toast({ 
+            title: "❌ No se puede eliminar", 
+            description: error.message,
+            variant: "destructive",
+            duration: 5000,
+          });
+          setModalOpen(false); 
+          return;
+        }
+        throw new Error(error.message || 'Error al eliminar');
+      }
       
       setLotes(lotes.filter(l => l.lote_id !== loteToDelete.lote_id));
       toast({ 
@@ -94,6 +107,7 @@ export default function LotesPage() {
         description: `${loteToDelete.nombre} ha sido eliminado`,
         duration: 3000,
       });
+      setModalOpen(false);
     } catch (error: any) {
       toast({ 
         title: "❌ Error", 
@@ -103,7 +117,6 @@ export default function LotesPage() {
       });
     } finally {
       setDeleting(false);
-      setModalOpen(false);
       setLoteToDelete(null);
     }
   };
