@@ -1,19 +1,19 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  Users, 
-  Milk, 
-  Activity, 
-  Heart, 
-  TrendingUp, 
-  PieChart as PieChartIcon,
-  RefreshCw,
-  Loader2,
-  Syringe,
-  ArrowUpRight,
-  ArrowDownRight,
-  FileText
+import {
+    Users,
+    Milk,
+    Activity,
+    Heart,
+    TrendingUp,
+    PieChart as PieChartIcon,
+    RefreshCw,
+    Loader2,
+    Syringe,
+    ArrowUpRight,
+    ArrowDownRight,
+    FileText
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,21 +21,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UniversalReportDialog } from './universal-report-dialog';
 import type { RegistroProduccion, LecheBackend, CarneBackend } from '@/lib/types/produccion';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  Legend
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    BarChart,
+    Bar,
+    Legend
 } from 'recharts';
 import { cn } from '@/lib/utils';
+
+const getLocalDate = (dateString?: string) => {
+    if (!dateString) return '';
+    try {
+        // Al instanciar new Date con una cadena ISO (ej: 2026-03-29T00:00:00Z)
+        // el navegador automáticamente ajusta la fecha al timezone local del cliente (ej: Nicaragua UTC-6 devuelve 28)
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return dateString.split('T')[0];
+        
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch {
+        return dateString.split('T')[0];
+    }
+}
 
 // --- Types ---
 interface DashboardData {
@@ -45,6 +62,8 @@ interface DashboardData {
     reproEventsMonth: number;
     vacasPreñadas: number;
     tasaPreñez: number;
+    partosMes: number;
+    nuevosAnimales: number;
     productionTrend: any[];
     distribution: any[];
     healthEvents: any[];
@@ -60,7 +79,7 @@ const KPICard = ({ title, value, subtitle, icon: Icon, color, trend }: any) => {
         rose: "bg-rose-50 text-rose-600 border-rose-100",
         amber: "bg-amber-50 text-amber-600 border-amber-100",
     };
-    
+
     return (
         <Card className="hover:shadow-md transition-all">
             <CardContent className="p-6">
@@ -94,59 +113,63 @@ export function DashboardSection() {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
             // Fetching from correct endpoints
-            const [respAnimals, respLeche, respCarne, respSalud, respRepro] = await Promise.all([
+            const [respAnimals, respLeche, respCarne, respSalud, respRepro, respPartos] = await Promise.all([
                 fetch(`${baseUrl}/animales`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/produccion/leche`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/produccion/carne`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/salud/tratamientos`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${baseUrl}/reproduccion/montas`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${baseUrl}/reproduccion/partos`, { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            
-            const [animalsData, lecheData, carneData, saludData, reproData] = await Promise.all([
+
+            const [animalsData, lecheData, carneData, saludData, reproData, partosData] = await Promise.all([
                 respAnimals.json(),
                 respLeche.json(),
                 respCarne.json(),
                 respSalud.json(),
                 respRepro.json(),
+                respPartos.json(),
             ]);
 
             const animals = Array.isArray(animalsData) ? animalsData : [];
             const leche = Array.isArray(lecheData) ? lecheData : [];
             const salud = Array.isArray(saludData) ? saludData : [];
             const repro = Array.isArray(reproData) ? reproData : [];
+            const partos = Array.isArray(partosData) ? partosData : [];
 
             // Mapeo para Reporte de Producción (Manteniendo lógica original de produccion-section.tsx)
-            const mapLeche = (b: LecheBackend): RegistroProduccion => ({
-              id: b.id.toString(),
-              tipo: 'leche',
-              animalId: b.animal?.animal_id?.toString() || '',
-              arete: b.animal?.arete || 'N/A',
-              nombreAnimal: b.animal?.nombre || 'Sin nombre',
-              numeroProduccion: b.numero_produccion,
-              cantidad: b.cantidad,
-              fecha: b.fecha_creacion?.split('T')[0] || '',
-              animal: b.animal,
-            });
-
-            const mapCarne = (b: CarneBackend): RegistroProduccion => {
-              const dateStr = b.fecha_creacion?.split('T')[0] || '';
-              let numeroProduccion = b.numero_produccion || (b as any).numeroProduccion || (b as any).etiqueta;
-              if (!numeroProduccion && b.fecha_creacion && b.animal?.animal_id) {
-                const d = new Date(b.fecha_creacion);
-                const ddmmyy = `${d.getDate().toString().padStart(2, '0')}${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getFullYear().toString().slice(2)}`;
-                numeroProduccion = `C-${ddmmyy}-${b.animal.animal_id.toString().padStart(3, '0')}`;
-              }
-              return {
+            const mapLeche = (b: any): RegistroProduccion => ({
                 id: b.id.toString(),
-                tipo: 'carne',
+                tipo: 'leche',
                 animalId: b.animal?.animal_id?.toString() || '',
                 arete: b.animal?.arete || 'N/A',
                 nombreAnimal: b.animal?.nombre || 'Sin nombre',
-                pesoCanal: b.peso_canal,
-                numeroProduccion: numeroProduccion,
-                fecha: dateStr,
+                numeroProduccion: b.numero_produccion,
+                cantidad: b.cantidad,
+                fecha: getLocalDate(b.fecha_creacion || b.fecha),
                 animal: b.animal,
-              };
+            });
+
+            const mapCarne = (b: any): RegistroProduccion => {
+                const rawDate = b.fecha_creacion || b.fecha;
+                const dateStr = getLocalDate(rawDate);
+                let numeroProduccion = b.numero_produccion || b.numeroProduccion || b.etiqueta;
+                if (!numeroProduccion && rawDate && b.animal?.animal_id) {
+                    const d = new Date(rawDate);
+                    const ddmmyy = `${d.getDate().toString().padStart(2, '0')}${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getFullYear().toString().slice(2)}`;
+                    numeroProduccion = `C-${ddmmyy}-${b.animal.animal_id.toString().padStart(3, '0')}`;
+                }
+                return {
+                    id: b.id.toString(),
+                    tipo: 'carne',
+                    animalId: b.animal?.animal_id?.toString() || '',
+                    arete: b.animal?.arete || 'N/A',
+                    nombreAnimal: b.animal?.nombre || 'Sin nombre',
+                    pesoCanal: b.peso_canal,
+                    numeroProduccion: numeroProduccion,
+                    fecha: dateStr,
+                    animal: b.animal,
+                };
             };
 
             const rLeche = Array.isArray(lecheData) ? lecheData.map(mapLeche) : [];
@@ -159,18 +182,23 @@ export function DashboardSection() {
                 .reduce((sum: number, r: any) => sum + Number(r.cantidad || 0), 0);
 
             const enTratamiento = salud.filter((t: any) => t.estado !== 'Completado').length;
-            
+
             const mesActual = new Date().getMonth();
             const montasEsteMes = repro.filter((r: any) => {
                 const rFecha = r.fecha || r.fecha_creacion;
                 return rFecha && new Date(rFecha).getMonth() === mesActual;
             }).length;
 
-            const vacasPreñadas = animals.filter((a: any) => 
-                a.estado_reproductivo === 'Gestante' || 
-                a.estado_reproductivo === 'Gestantes' || 
+            const vacasPreñadas = animals.filter((a: any) =>
+                a.estado_reproductivo === 'Gestante' ||
+                a.estado_reproductivo === 'Gestantes' ||
                 a.estado_reproductivo === 'Preñada'
             ).length;
+
+            const partosMes = partos.filter((p: any) => {
+                const pFecha = p.fecha_parto || p.fecha_creacion;
+                return pFecha && new Date(pFecha).getMonth() === mesActual;
+            }).length;
 
             // Simular tasa de preñez si no tenemos el historial completo de diagnósticos
             // pero podemos basarlo en montas + vacas que pasaron a gestante
@@ -180,13 +208,23 @@ export function DashboardSection() {
             const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
                 const d = new Date();
                 d.setDate(d.getDate() - (6 - i));
-                const dateStr = d.toISOString().split('T')[0];
-                const total = leche
-                    .filter((r: any) => (r.fecha_creacion || r.fecha)?.split('T')[0] === dateStr)
+                
+                // Formato YYYY-MM-DD local
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+
+                const totalLeche = rLeche
+                    .filter((r: any) => r.fecha === dateStr)
                     .reduce((sum: number, r: any) => sum + Number(r.cantidad || 0), 0);
+                const totalCarne = rCarne
+                    .filter((r: any) => r.fecha === dateStr)
+                    .reduce((sum: number, r: any) => sum + Number(r.pesoCanal || 0), 0);
                 return {
                     fecha: d.toLocaleDateString('es-NI', { day: 'numeric', month: 'short' }),
-                    cantidad: total
+                    leche: totalLeche,
+                    carne: totalCarne
                 };
             });
 
@@ -218,6 +256,8 @@ export function DashboardSection() {
                 reproEventsMonth: montasEsteMes,
                 vacasPreñadas,
                 tasaPreñez,
+                partosMes,
+                nuevosAnimales: vacasPreñadas,
                 productionTrend: ultimos7Dias,
                 distribution,
                 healthEvents: saludTrend,
@@ -264,21 +304,21 @@ export function DashboardSection() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm mb-6">
                 <div>
                     <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900">
-                         PANEL DE REPORTES
+                        PANEL DE REPORTES
                     </h2>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button 
+                    <Button
                         onClick={() => setReportModalOpen(true)}
                         className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-[11px] h-10 gap-2 px-6 rounded-xl shadow-sm"
                     >
                         <FileText className="w-4 h-4" />
                         Generar Reporte
                     </Button>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={fetchData} 
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchData}
                         className="flex-1 sm:flex-none bg-zinc-50 border-zinc-200 hover:bg-zinc-100 text-zinc-700 gap-2 text-[11px] font-bold uppercase tracking-wider h-10 px-6 rounded-xl transition-all"
                     >
                         Actualizar
@@ -288,32 +328,32 @@ export function DashboardSection() {
 
             {/* KPI Header */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard 
-                    title="Total Hato" 
-                    value={data.totalAnimals} 
-                    subtitle="Animales registrados" 
-                    icon={Users} 
+                <KPICard
+                    title="Total Hato"
+                    value={data.totalAnimals}
+                    subtitle="Animales registrados"
+                    icon={Users}
                     color="blue"
                 />
-                <KPICard 
-                    title="Leche Hoy" 
-                    value={`${data.productionToday} L`} 
-                    subtitle="Producción diaria" 
-                    icon={Milk} 
+                <KPICard
+                    title="Leche Hoy"
+                    value={`${data.productionToday} L`}
+                    subtitle="Producción diaria"
+                    icon={Milk}
                     color="emerald"
                 />
-                <KPICard 
-                    title="Salud / Alerta" 
-                    value={data.inTreatment} 
-                    subtitle="En tratamiento" 
-                    icon={Syringe} 
+                <KPICard
+                    title="Salud / Alerta"
+                    value={data.inTreatment}
+                    subtitle="En tratamiento"
+                    icon={Syringe}
                     color="rose"
                 />
-                    <KPICard 
-                    title="Reproducción" 
-                    value={data.reproEventsMonth} 
-                    subtitle="Montas este mes" 
-                    icon={Heart} 
+                <KPICard
+                    title="Reproducción"
+                    value={data.reproEventsMonth}
+                    subtitle="Montas este mes"
+                    icon={Heart}
                     color="amber"
                 />
             </div>
@@ -343,34 +383,48 @@ export function DashboardSection() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <AreaChart data={data.productionTrend}>
                                             <defs>
-                                                <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                                <linearGradient id="colorLeche" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                </linearGradient>
+                                                <linearGradient id="colorCarne" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
-                                            <XAxis 
-                                                dataKey="fecha" 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#888' }} 
+                                            <XAxis
+                                                dataKey="fecha"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fontSize: 10, fill: '#888' }}
                                             />
-                                            <YAxis 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#888' }} 
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fontSize: 10, fill: '#888' }}
                                             />
-                                            <Tooltip 
+                                            <Tooltip
                                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                                formatter={(value: number) => [`${value} Litros`, 'Producción']}
                                             />
-                                            <Area 
-                                                type="monotone" 
-                                                dataKey="cantidad" 
-                                                stroke="#10b981" 
+                                            <Legend verticalAlign="top" height={36} />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="leche"
+                                                name="Leche (L)"
+                                                stroke="#10b981"
                                                 strokeWidth={3}
-                                                fillOpacity={1} 
-                                                fill="url(#colorProd)" 
+                                                fillOpacity={1}
+                                                fill="url(#colorLeche)"
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="carne"
+                                                name="Carne (kg)"
+                                                stroke="#f59e0b"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorCarne)"
                                             />
                                         </AreaChart>
                                     </ResponsiveContainer>
@@ -379,7 +433,7 @@ export function DashboardSection() {
                         </Card>
 
                         <Card className="border-none shadow-sm overflow-hidden text-center">
-                             <CardHeader className="bg-zinc-50/50 border-b border-zinc-100 items-center">
+                            <CardHeader className="bg-zinc-50/50 border-b border-zinc-100 items-center">
                                 <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
                                     <Heart className="w-4 h-4 text-amber-500" />
                                     Resumen Reproductivo
@@ -405,36 +459,12 @@ export function DashboardSection() {
 
                 <TabsContent value="health">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="border-none shadow-sm overflow-hidden">
-                            <CardHeader className="bg-zinc-50/50 border-b border-zinc-100">
-                                <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
-                                    <PieChartIcon className="w-4 h-4 text-blue-500" />
-                                    Distribución del Hato
-                                </CardTitle>
-                                <CardDescription>Por estado reproductivo</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-6">
-                                <div className="h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={data.distribution}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                {data.distribution.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip />
-                                            <Legend />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                        <Card className="border-none shadow-sm overflow-hidden flex flex-col justify-center min-h-[300px] border border-dashed border-zinc-200">
+                            <CardContent className="p-6 flex flex-col items-center justify-center h-full text-center">
+                                <div className="p-4 bg-zinc-100 rounded-full mb-4">
+                                    <Users className="w-8 h-8 text-zinc-400" />
                                 </div>
+                                <h3 className="text-lg font-bold text-zinc-700">En construcción...</h3>
                             </CardContent>
                         </Card>
 
@@ -451,26 +481,26 @@ export function DashboardSection() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={data.healthEvents}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
-                                            <XAxis 
-                                                dataKey="fecha" 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#888' }} 
+                                            <XAxis
+                                                dataKey="fecha"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fontSize: 10, fill: '#888' }}
                                             />
-                                            <YAxis 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#888' }} 
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fontSize: 10, fill: '#888' }}
                                             />
-                                            <Tooltip 
+                                            <Tooltip
                                                 cursor={{ fill: '#f8f8f8' }}
                                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                                 formatter={(value: number) => [value, 'Tratamientos']}
                                             />
-                                            <Bar 
-                                                dataKey="eventos" 
-                                                fill="#ef4444" 
-                                                radius={[4, 4, 0, 0]} 
+                                            <Bar
+                                                dataKey="eventos"
+                                                fill="#ef4444"
+                                                radius={[4, 4, 0, 0]}
                                                 barSize={20}
                                             />
                                         </BarChart>
@@ -482,9 +512,9 @@ export function DashboardSection() {
                 </TabsContent>
             </Tabs>
 
-            <UniversalReportDialog 
-                isOpen={reportModalOpen} 
-                onClose={() => setReportModalOpen(false)} 
+            <UniversalReportDialog
+                isOpen={reportModalOpen}
+                onClose={() => setReportModalOpen(false)}
                 registrosLeche={data.registrosLeche}
                 registrosCarne={data.registrosCarne}
             />

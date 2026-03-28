@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { produccionApi } from "@/lib/api/produccion";
 import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 
 const lecheSchema = z.object({
     animalId: z.string().min(1, "Selecciona un animal"),
@@ -42,6 +43,7 @@ type AnimalSimple = {
 
 export default function NuevaProduccionPage() {
     const router = useRouter();
+    const { toast } = useToast();
 
     const [loading, setLoading] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
@@ -207,11 +209,18 @@ export default function NuevaProduccionPage() {
                 }, token);
             }
 
+            toast({ 
+                title: "¡Producción Registrada!", 
+                description: tipo === 'leche' ? "El registro de leche se guardó correctamente." : "El registro de carne se guardó correctamente.",
+                className: "bg-green-600 text-white" 
+            });
+
             router.push("/produccion");
 
         } catch (err: any) {
             const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
             console.error(mensaje);
+            toast({ title: "Error", description: mensaje, variant: "destructive" });
         } finally {
             setLoading(false);
         }

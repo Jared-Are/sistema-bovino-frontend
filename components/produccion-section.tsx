@@ -13,8 +13,24 @@ import { ProduccionCards } from './produccion-cards';
 import { ProduccionFilters } from './produccion-filters';
 import { ProduccionDetailsSheet } from './produccion-details-sheet';
 
+const getLocalDate = (dateString?: string) => {
+  if (!dateString) return '';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString.split('T')[0];
+    
+    // Convertir a YYYY-MM-DD local
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateString.split('T')[0];
+  }
+}
+
 // Mapear leche del backend al frontend
-const mapLecheToFrontend = (b: LecheBackend): RegistroProduccion => ({
+const mapLecheToFrontend = (b: any): RegistroProduccion => ({
   id: b.id.toString(),
   tipo: 'leche',
   animalId: b.animal?.animal_id?.toString() || '',
@@ -22,18 +38,19 @@ const mapLecheToFrontend = (b: LecheBackend): RegistroProduccion => ({
   nombreAnimal: b.animal?.nombre || 'Sin nombre',
   numeroProduccion: b.numero_produccion,
   cantidad: b.cantidad,
-  fecha: b.fecha_creacion?.split('T')[0] || '',
+  fecha: getLocalDate(b.fecha_creacion || b.fecha),
   animal: b.animal,
 });
 
 // Mapear carne del backend al frontend
-const mapCarneToFrontend = (b: CarneBackend): RegistroProduccion => {
-  const dateStr = b.fecha_creacion?.split('T')[0] || '';
-  let numeroProduccion = b.numero_produccion || (b as any).numeroProduccion || (b as any).etiqueta;
+const mapCarneToFrontend = (b: any): RegistroProduccion => {
+  const rawDate = b.fecha_creacion || b.fecha;
+  const dateStr = getLocalDate(rawDate);
+  let numeroProduccion = b.numero_produccion || b.numeroProduccion || b.etiqueta;
 
   // Si no viene del backend, reconstruirla: C-DDMMYY-AnimalID (3 dígitos)
-  if (!numeroProduccion && b.fecha_creacion && b.animal?.animal_id) {
-    const d = new Date(b.fecha_creacion);
+  if (!numeroProduccion && rawDate && b.animal?.animal_id) {
+    const d = new Date(rawDate);
     const day = d.getDate().toString().padStart(2, '0');
     const month = (d.getMonth() + 1).toString().padStart(2, '0');
     const year = d.getFullYear().toString().slice(2);
@@ -98,10 +115,9 @@ export function ProduccionSection() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return;
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) return { success: false, error: 'No autorizado' };
 
       if (tipoActivo === 'leche') {
         await produccionApi.deleteLeche(id, token);
@@ -111,8 +127,10 @@ export function ProduccionSection() {
 
       setIsSheetOpen(false);
       cargarDatos();
+      return { success: true };
     } catch (err: any) {
       console.error('Error al eliminar:', err);
+      return { success: false, error: err.message || 'Error al eliminar' };
     }
   };
 
@@ -268,6 +286,7 @@ export function ProduccionSection() {
         registro={registroSeleccionado}
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
+        onDelete={handleDelete}
       />
     </div>
   );

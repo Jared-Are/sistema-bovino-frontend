@@ -50,7 +50,7 @@ export function ProduccionDetailsSheet({
         const result = await onDelete(registro.id);
         if (result.success) {
           toast({
-            title: "✅ Registro eliminado",
+            title: "Registro eliminado",
             description: `El registro de ${isLeche ? 'leche' : 'carne'} se eliminó exitosamente`,
             duration: 3000,
           });
@@ -61,7 +61,7 @@ export function ProduccionDetailsSheet({
       }
     } catch (error: any) {
       toast({
-        title: "❌ Error",
+        title: "Error",
         description: error.message || "No se pudo eliminar el registro",
         variant: "destructive",
         duration: 5000,
@@ -86,9 +86,9 @@ export function ProduccionDetailsSheet({
                   <Pencil className="w-4 h-4" />
                 </Button>
               </Link>
-              <Button 
-                size="sm" 
-                variant="destructive" 
+              <Button
+                size="sm"
+                variant="destructive"
                 onClick={() => setModalOpen(true)}
                 disabled={deleting}
               >
@@ -147,7 +147,7 @@ export function ProduccionDetailsSheet({
             </div>
           </div>
         </div>
-        
+
         <Modal
           open={modalOpen}
           onOpenChange={setModalOpen}

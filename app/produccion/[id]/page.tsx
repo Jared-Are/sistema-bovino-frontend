@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { produccionApi } from "@/lib/api/produccion";
 import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 
 const lecheSchema = z.object({
     numero_produccion: z.string().min(1, "El número de producción es obligatorio"),
@@ -29,10 +30,10 @@ const carneSchema = z.object({
     peso_canal: z.coerce.number().min(10, "Mínimo 10 kg"),
 });
 
-type AnimalSimple = { 
-    animal_id: number; 
-    arete: string; 
-    nombre: string; 
+type AnimalSimple = {
+    animal_id: number;
+    arete: string;
+    nombre: string;
     peso_actual?: number;
     ultimo_peso?: number;
     ultimoPeso?: number;
@@ -41,6 +42,7 @@ type AnimalSimple = {
 export default function EditarProduccionPage() {
     const router = useRouter();
     const params = useParams();
+    const { toast } = useToast();
     const id = params.id as string;
 
     const [pageLoading, setPageLoading] = useState(true);
@@ -109,7 +111,7 @@ export default function EditarProduccionPage() {
                         if (registro) {
                             setTipo('carne');
                             let numeroProduccion = registro.numero_produccion || (registro as any).numeroProduccion || (registro as any).etiqueta;
-                            
+
                             // Fallback reconstruction
                             if (!numeroProduccion && registro.fecha_creacion && registro.animal?.animal_id) {
                                 const d = new Date(registro.fecha_creacion);
@@ -184,11 +186,18 @@ export default function EditarProduccionPage() {
                 }, token);
             }
 
+            toast({
+                title: "¡Registro Actualizado!",
+                description: tipo === 'leche' ? "El registro de leche se actualizó correctamente." : "El registro de carne se actualizó correctamente.",
+                className: "bg-green-600 text-white"
+            });
+
             router.push("/produccion");
 
         } catch (err: any) {
             const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
             console.error(mensaje);
+            toast({ title: "Error", description: mensaje, variant: "destructive" });
         } finally {
             setSaving(false);
         }
