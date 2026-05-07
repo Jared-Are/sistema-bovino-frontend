@@ -449,6 +449,7 @@ export function UniversalReportDialog({ isOpen, onClose, registrosLeche = [], re
                     <Input
                       type="date"
                       value={fechaInicio}
+                      max={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setFechaInicio(e.target.value)}
                       className="border-zinc-200"
                     />
@@ -458,6 +459,7 @@ export function UniversalReportDialog({ isOpen, onClose, registrosLeche = [], re
                     <Input
                       type="date"
                       value={fechaFin}
+                      max={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setFechaFin(e.target.value)}
                       className="border-zinc-200"
                     />

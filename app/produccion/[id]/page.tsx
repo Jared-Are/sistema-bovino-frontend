@@ -19,9 +19,9 @@ import {
 import Link from "next/link";
 import { produccionApi } from "@/lib/api/produccion";
 import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 
 const lecheSchema = z.object({
-    numero_produccion: z.string().min(1, "El número de producción es obligatorio"),
     cantidad: z.coerce.number().min(0.1, "Mínimo 0.1 litros").max(60, "Máximo 60 litros"),
 });
 
@@ -29,10 +29,10 @@ const carneSchema = z.object({
     peso_canal: z.coerce.number().min(10, "Mínimo 10 kg"),
 });
 
-type AnimalSimple = { 
-    animal_id: number; 
-    arete: string; 
-    nombre: string; 
+type AnimalSimple = {
+    animal_id: number;
+    arete: string;
+    nombre: string;
     peso_actual?: number;
     ultimo_peso?: number;
     ultimoPeso?: number;
@@ -41,6 +41,7 @@ type AnimalSimple = {
 export default function EditarProduccionPage() {
     const router = useRouter();
     const params = useParams();
+    const { toast } = useToast();
     const id = params.id as string;
 
     const [pageLoading, setPageLoading] = useState(true);
@@ -109,7 +110,7 @@ export default function EditarProduccionPage() {
                         if (registro) {
                             setTipo('carne');
                             let numeroProduccion = registro.numero_produccion || (registro as any).numeroProduccion || (registro as any).etiqueta;
-                            
+
                             // Fallback reconstruction
                             if (!numeroProduccion && registro.fecha_creacion && registro.animal?.animal_id) {
                                 const d = new Date(registro.fecha_creacion);
@@ -154,12 +155,10 @@ export default function EditarProduccionPage() {
 
             if (tipo === 'leche') {
                 const valid = lecheSchema.parse({
-                    numero_produccion: formData.numero_produccion,
                     cantidad: formData.cantidad ? Number(formData.cantidad) : undefined,
                 });
 
                 await produccionApi.updateLeche(id, {
-                    numero_produccion: valid.numero_produccion,
                     cantidad: valid.cantidad,
                 }, token);
             } else {
@@ -184,11 +183,18 @@ export default function EditarProduccionPage() {
                 }, token);
             }
 
+            toast({
+                title: "¡Registro Actualizado!",
+                description: tipo === 'leche' ? "El registro de leche se actualizó correctamente." : "El registro de carne se actualizó correctamente.",
+                className: "bg-green-600 text-white"
+            });
+
             router.push("/produccion");
 
         } catch (err: any) {
             const mensaje = err instanceof z.ZodError ? err.errors[0].message : err.message;
             console.error(mensaje);
+            toast({ title: "Error", description: mensaje, variant: "destructive" });
         } finally {
             setSaving(false);
         }
@@ -257,16 +263,17 @@ export default function EditarProduccionPage() {
                         {tipo === 'leche' ? (
                             <>
                                 <div>
-                                    <Label>Número de Producción *</Label>
+                                    <Label>Número de Producción</Label>
                                     <div className="relative">
-                                        <Hash className="absolute left-2 top-2.5 h-4 w-4 text-blue-400" />
+                                        <Hash className="absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
                                         <Input
-                                            className="pl-8"
-                                            placeholder="Ej: L-2026-001"
+                                            className="pl-8 bg-zinc-50 text-zinc-500 cursor-not-allowed"
                                             value={formData.numero_produccion}
-                                            onChange={(e) => setFormData({ ...formData, numero_produccion: e.target.value })}
+                                            disabled
+                                            readOnly
                                         />
                                     </div>
+                                    <p className="text-xs text-zinc-400 mt-1">La etiqueta se genera automáticamente y no se puede editar</p>
                                 </div>
                                 <div>
                                     <Label>Cantidad (Litros) *</Label>

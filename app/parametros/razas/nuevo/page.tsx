@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -28,10 +28,11 @@ export default function NuevaRazaPage() {
     nombre: '',
     descripcion: '',
   });
-
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFieldErrors({}); // limpiar errores
 
     try {
       const valid = razaSchema.parse(formData);
@@ -49,6 +50,11 @@ export default function NuevaRazaPage() {
 
       if (!response.ok) {
         const error = await response.json();
+         if (error.message?.includes('ya está registrada')) {
+        setFieldErrors({ nombre: error.message });
+        setLoading(false);
+        return;
+      }
         throw new Error(error.message || 'Error al crear raza');
       }
       
@@ -91,10 +97,18 @@ export default function NuevaRazaPage() {
                   const val = e.target.value;
                   if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/.test(val)) return;
                   setFormData({ ...formData, nombre: val });
+                  if (fieldErrors.nombre) setFieldErrors({ ...fieldErrors, nombre: '' });
                 }}
                 placeholder="Ej: Brahman"
+                className={fieldErrors.nombre ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {fieldErrors.nombre && (
+                <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.nombre}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

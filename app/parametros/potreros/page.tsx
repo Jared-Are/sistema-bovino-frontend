@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-
+import Modal from '@/components/ui/modal';
 type Potrero = {
   potrero_id: number;
   nombre: string;
@@ -30,6 +30,9 @@ export default function PotrerosPage() {
   const [potreros, setPotreros] = useState<Potrero[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [potreroToDelete, setPotreroToDelete] = useState<Potrero | null>(null);
 
   const fetchPotreros = async () => {
     try {
@@ -66,14 +69,20 @@ export default function PotrerosPage() {
     (p.ubicacion && p.ubicacion.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleDelete = async (id: number, nombre: string) => {
-    if (!confirm(`¿Eliminar potrero ${nombre}?`)) return;
+  const handleDeleteClick = (potrero: Potrero) => {
+    setPotreroToDelete(potrero);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!potreroToDelete) return;
     
+    setDeleting(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/potreros/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/potreros/${potreroToDelete.potrero_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -81,12 +90,38 @@ export default function PotrerosPage() {
         },
       });
 
-      if (!response.ok) throw new Error('Error al eliminar');
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.message?.includes('hay animales asociados')) {
+          toast({ 
+            title: "❌ No se puede eliminar", 
+            description: error.message,
+            variant: "destructive",
+            duration: 5000,
+          });
+          setModalOpen(false); 
+          return;
+        }
+        throw new Error(error.message || 'Error al eliminar');
+      }
       
-      setPotreros(potreros.filter(p => p.potrero_id !== id));
-      toast({ title: "Potrero eliminado" });
+      setPotreros(potreros.filter(p => p.potrero_id !== potreroToDelete.potrero_id));
+      toast({ 
+        title: "✅ Potrero eliminado", 
+        description: `${potreroToDelete.nombre} ha sido eliminado`,
+        duration: 3000,
+      });
+      setModalOpen(false);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "❌ Error", 
+        description: error.message, 
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setPotreroToDelete(null);
     }
   };
 
@@ -181,7 +216,7 @@ export default function PotrerosPage() {
                             variant="ghost" 
                             size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(potrero.potrero_id, potrero.nombre)}
+                            onClick={() => handleDeleteClick(potrero)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -195,6 +230,17 @@ export default function PotrerosPage() {
           )}
         </CardContent>
       </Card>
+      <Modal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title="Eliminar Potrero"
+        description={`¿Está seguro de eliminar el potrero "${potreroToDelete?.nombre}"? Esta acción no se puede deshacer.`}
+        variant="destructive"
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

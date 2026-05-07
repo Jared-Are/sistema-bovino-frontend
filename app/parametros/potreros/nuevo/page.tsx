@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, MapPin, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -27,11 +27,11 @@ export default function NuevoPotreroPage() {
     nombre: '',
     ubicacion: '',
   });
-
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+    setFieldErrors({}); 
     try {
       const valid = potreroSchema.parse(formData);
       const token = localStorage.getItem('token');
@@ -48,6 +48,11 @@ export default function NuevoPotreroPage() {
 
       if (!response.ok) {
         const error = await response.json();
+        if (error.message?.includes('ya está registrado')) {
+          setFieldErrors({ nombre: error.message });
+          setLoading(false);
+          return;
+        }
         throw new Error(error.message || 'Error al crear potrero');
       }
       
@@ -90,10 +95,18 @@ export default function NuevoPotreroPage() {
                   const val = e.target.value;
                   if (!/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ\s]*$/.test(val)) return;
                   setFormData({ ...formData, nombre: val });
+                  if (fieldErrors.nombre) setFieldErrors({ ...fieldErrors, nombre: '' });
                 }}
                 placeholder="Ej: Potrero Norte"
+                className={fieldErrors.nombre ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {fieldErrors.nombre && (
+                <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.nombre}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

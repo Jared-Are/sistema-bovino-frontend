@@ -9,7 +9,6 @@ import { AnimalDetailsSheet } from './animal-details-sheet';
 import { AnimalCards } from './animal-cards';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 
 type SexoAnimal = 'Macho' | 'Hembra';
 
@@ -93,6 +92,7 @@ export function AnimalSection() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [filters, setFilters] = useState({
     lotes: [] as string[],
+    razas: [] as string[],
     search: '',
   });
 
@@ -170,6 +170,9 @@ export function AnimalSection() {
         if (!filters.lotes.includes(animal.lote)) return false;
       }
 
+      if (filters.razas.length > 0) {
+        if (!filters.razas.includes(animal.raza)) return false;
+      }
       return true;
     });
   }, [animales, filters]);
@@ -177,7 +180,7 @@ export function AnimalSection() {
   const selectedAnimal = animales.find((a) => a.id === selectedAnimalId);
 
   const opcionesLotes = [...new Set(animales.map(a => a.lote))].filter(Boolean);
-
+  const opcionesRazas = [...new Set(animales.map(a => a.raza))].filter(Boolean); 
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
@@ -245,6 +248,7 @@ export function AnimalSection() {
         <AnimalFilters 
           onFiltersChange={setFilters}
           lotes={opcionesLotes}
+          razas={opcionesRazas}
         />
 
         {cargando ? (
@@ -286,8 +290,6 @@ export function AnimalSection() {
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
       />
-      
-      <Toaster />
-    </div>
+      </div>
   );
 }

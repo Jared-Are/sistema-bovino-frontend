@@ -44,6 +44,7 @@ export function ProduccionFilters({
             type="date"
             className="pl-10"
             value={dateValue}
+            max={new Date().toISOString().split('T')[0]}
             onChange={(e) => onDateChange(e.target.value)}
           />
         </div>

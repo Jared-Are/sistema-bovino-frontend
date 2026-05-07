@@ -10,6 +10,7 @@ import { es } from 'date-fns/locale';
 
 type Tratamiento = {
   id: number;
+  numero_tratamiento?: string;
   tipo_tratamiento?: { id: number; nombre: string };
   animal?: { animal_id: number; arete: string; nombre: string };
   estado: string;
@@ -20,6 +21,13 @@ type Tratamiento = {
 interface CalendarioSaludProps {
   tratamientos: Tratamiento[];
   onTratamientoClick?: (tratamiento: Tratamiento) => void;
+  // 👈 Filtros recibidos desde el padre
+  filters?: {
+    tipos: string[];
+    estados: string[];
+    search: string;
+    mes?: string;
+  };
 }
 
 const getEstadoColor = (estado: string) => {
@@ -32,23 +40,56 @@ const getEstadoColor = (estado: string) => {
   }
 };
 
-export function CalendarioSalud({ tratamientos, onTratamientoClick }: CalendarioSaludProps) {
+const getEstadoLabel = (estado: string) => {
+  switch (estado) {
+    case 'PENDIENTE': return 'Pendiente';
+    case 'ACTIVO': return 'Activo';
+    case 'COMPLETADO': return 'Completado';
+    case 'CANCELADO': return 'Cancelado';
+    default: return estado;
+  }
+};
+
+export function CalendarioSalud({ tratamientos, onTratamientoClick, filters }: CalendarioSaludProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [filterTipo, setFilterTipo] = useState<string>('todos');
-  const [filterEstado, setFilterEstado] = useState<string>('todos');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const tratamientosFiltrados = useMemo(() => {
+    if (!filters) return tratamientos;
+    
     return tratamientos.filter(t => {
-      if (filterTipo !== 'todos' && t.tipo_tratamiento?.nombre !== filterTipo) return false;
-      if (filterEstado !== 'todos' && t.estado !== filterEstado) return false;
+      if (filters.tipos.length > 0) {
+        if (!t.tipo_tratamiento?.nombre) return false;
+        if (!filters.tipos.includes(t.tipo_tratamiento.nombre)) return false;
+      }
+      
+      if (filters.estados.length > 0) {
+        if (!filters.estados.includes(t.estado)) return false;
+      }
+      
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matches = 
+          t.numero_tratamiento?.toLowerCase().includes(searchLower) ||
+          t.animal?.arete?.toLowerCase().includes(searchLower) ||
+          t.animal?.nombre?.toLowerCase().includes(searchLower) ||
+          t.tipo_tratamiento?.nombre?.toLowerCase().includes(searchLower);
+        
+        if (!matches) return false;
+      }
+      
+      if (filters.mes) {
+        const fechaTratamiento = t.fecha.split('T')[0]; // YYYY-MM-DD
+        if (!fechaTratamiento.startsWith(filters.mes)) return false;
+      }
+      
       return true;
     });
-  }, [tratamientos, filterTipo, filterEstado]);
+  }, [tratamientos, filters]);
 
   const eventosPorDia = useMemo(() => {
     const mapa = new Map<string, Tratamiento[]>();
@@ -72,10 +113,14 @@ export function CalendarioSalud({ tratamientos, onTratamientoClick }: Calendario
     ? eventosPorDia.get(format(selectedDate, 'yyyy-MM-dd')) || []
     : [];
 
+  // Estados disponibles
+  const estados = ['PENDIENTE', 'ACTIVO', 'COMPLETADO', 'CANCELADO'];
+
   return (
-    <div >
+    <div className="space-y-6">
+      {/* Calendario */}
       <Card>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-emerald-600" />
@@ -91,13 +136,22 @@ export function CalendarioSalud({ tratamientos, onTratamientoClick }: Calendario
             </div>
           </div>
 
+          {/* Días de la semana */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => (
+              <div key={day} className="text-center text-sm font-medium text-zinc-500 py-2">
+                {day}
+              </div>
+            ))}
+          </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: monthStart.getDay() }).map((_, i) => (
+            {/* Ajustar para que empiece en lunes */}
+            {Array.from({ length: (monthStart.getDay() + 6) % 7 }).map((_, i) => (
               <div key={`empty-${i}`} className="min-h-[100px] bg-zinc-50 rounded-lg border border-dashed border-zinc-200" />
             ))}
 
-            {daysInMonth.map(day => {
+            {daysInMonth.map((day: Date) => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const eventosDelDia = eventosPorDia.get(dateStr) || [];
               const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -115,21 +169,22 @@ export function CalendarioSalud({ tratamientos, onTratamientoClick }: Calendario
                   <span className="text-sm font-medium">{format(day, 'd')}</span>
                   {eventosDelDia.length > 0 && (
                     <div className="mt-1 space-y-1">
-                      {eventosDelDia.slice(0, 2).map(e => (
+                      {eventosDelDia.slice(0, 3).map(e => (
                         <div
                           key={e.id}
                           onClick={(event) => {
                             event.stopPropagation();
                             onTratamientoClick?.(e);
                           }}
-                          className={`text-xs p-1 rounded ${getEstadoColor(e.estado)} truncate`}
+                          className={`text-xs p-1 rounded truncate ${getEstadoColor(e.estado)}`}
+                          title={`${e.animal?.arete} - ${e.tipo_tratamiento?.nombre}`}
                         >
                           {e.animal?.arete}
                         </div>
                       ))}
-                      {eventosDelDia.length > 2 && (
-                        <div className="text-xs text-zinc-500">
-                          +{eventosDelDia.length - 2} más
+                      {eventosDelDia.length > 3 && (
+                        <div className="text-xs text-zinc-500 text-center">
+                          +{eventosDelDia.length - 3}
                         </div>
                       )}
                     </div>
@@ -138,10 +193,21 @@ export function CalendarioSalud({ tratamientos, onTratamientoClick }: Calendario
               );
             })}
           </div>
+
+          {/* Leyenda de estados */}
+          <div className="mt-4 pt-4 border-t flex flex-wrap gap-3">
+            <span className="text-xs text-zinc-500">Estados:</span>
+            {estados.map(estado => (
+              <div key={estado} className="flex items-center gap-1">
+                <div className={`w-3 h-3 rounded ${getEstadoColor(estado).split(' ')[0]}`} />
+                <span className="text-xs text-zinc-600">{getEstadoLabel(estado)}</span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Detalle del dia seleccionado */}
+      {/* Detalle del día seleccionado */}
       {selectedDate && (
         <Card>
           <CardContent className="p-6">
@@ -160,11 +226,13 @@ export function CalendarioSalud({ tratamientos, onTratamientoClick }: Calendario
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-medium">{t.animal?.arete} - {t.animal?.nombre}</p>
+                        <p className="font-medium">
+                          {t.numero_tratamiento} - {t.animal?.arete} {t.animal?.nombre && `(${t.animal.nombre})`}
+                        </p>
                         <p className="text-sm text-zinc-600">{t.tipo_tratamiento?.nombre}</p>
                       </div>
                       <Badge className={getEstadoColor(t.estado)}>
-                        {t.estado}
+                        {getEstadoLabel(t.estado)}
                       </Badge>
                     </div>
                     {t.descripcion && (

@@ -34,7 +34,7 @@ export function ProduccionCards({ registros, onSelect }: ProduccionCardsProps) {
               )}
             </div>
 
-            <h3 className="text-lg font-bold text-zinc-900 mb-1 truncate group-hover:text-emerald-700 transition-colors">
+            <h3 className="text-lg font-bold text-zinc-900 mb-1 truncate">
               {reg.nombreAnimal}
             </h3>
 

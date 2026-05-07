@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-
+import Modal from '@/components/ui/modal'; 
 type TipoTratamiento = {
   id: number;
   nombre: string;
@@ -28,6 +28,10 @@ export default function TiposTratamientoPage() {
   const [tipos, setTipos] = useState<TipoTratamiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [tipoToDelete, setTipoToDelete] = useState<TipoTratamiento | null>(null);
 
   const fetchTipos = async () => {
     try {
@@ -63,14 +67,20 @@ export default function TiposTratamientoPage() {
     t.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDelete = async (id: number, nombre: string) => {
-    if (!confirm(`¿Eliminar tipo ${nombre}?`)) return;
+  const handleDeleteClick = (tipo: TipoTratamiento) => {
+    setTipoToDelete(tipo);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!tipoToDelete) return;
     
+    setDeleting(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tipos-tratamiento/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/salud/tipos-tratamiento/${tipoToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -80,13 +90,36 @@ export default function TiposTratamientoPage() {
 
       if (!response.ok) {
         const error = await response.json();
+        if (error.message?.includes('tratamientos asociados')) {
+          toast({ 
+            title: "❌ No se puede eliminar", 
+            description: error.message,
+            variant: "destructive",
+            duration: 5000,
+          });
+          setModalOpen(false);
+          return;
+        }
         throw new Error(error.message || 'Error al eliminar');
       }
       
-      setTipos(tipos.filter(t => t.id !== id));
-      toast({ title: "Tipo eliminado" });
+      setTipos(tipos.filter(t => t.id !== tipoToDelete.id));
+      toast({ 
+        title: "✅ Tipo eliminado", 
+        description: `${tipoToDelete.nombre} ha sido eliminado`,
+        duration: 3000,
+      });
+      setModalOpen(false);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "❌ Error", 
+        description: error.message, 
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setTipoToDelete(null);
     }
   };
 
@@ -171,7 +204,7 @@ export default function TiposTratamientoPage() {
                             variant="ghost" 
                             size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(tipo.id, tipo.nombre)}
+                            onClick={() => handleDeleteClick(tipo)} 
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -185,6 +218,18 @@ export default function TiposTratamientoPage() {
           )}
         </CardContent>
       </Card>
+
+      <Modal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title="Eliminar Tipo de Tratamiento"
+        description={`¿Está seguro de eliminar el tipo "${tipoToDelete?.nombre}"? Esta acción no se puede deshacer.`}
+        variant="destructive"
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

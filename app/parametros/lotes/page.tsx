@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-
+import Modal from '@/components/ui/modal';
 type Lote = {
   lote_id: number;
   nombre: string;
@@ -28,7 +28,9 @@ export default function LotesPage() {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [loteToDelete, setLoteToDelete] = useState<Lote | null>(null);
   const fetchLotes = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -63,14 +65,20 @@ export default function LotesPage() {
     l.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDelete = async (id: number, nombre: string) => {
-    if (!confirm(`¿Eliminar lote ${nombre}?`)) return;
+  const handleDeleteClick = (lote: Lote) => {
+    setLoteToDelete(lote);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!loteToDelete) return;
     
+    setDeleting(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/lotes/${loteToDelete.lote_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -78,12 +86,38 @@ export default function LotesPage() {
         },
       });
 
-      if (!response.ok) throw new Error('Error al eliminar');
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.message?.includes('hay animales asociados')) {
+          toast({ 
+            title: "❌ No se puede eliminar", 
+            description: error.message,
+            variant: "destructive",
+            duration: 5000,
+          });
+          setModalOpen(false); 
+          return;
+        }
+        throw new Error(error.message || 'Error al eliminar');
+      }
       
-      setLotes(lotes.filter(l => l.lote_id !== id));
-      toast({ title: "Lote eliminado" });
+      setLotes(lotes.filter(l => l.lote_id !== loteToDelete.lote_id));
+      toast({ 
+        title: "✅ Lote eliminado", 
+        description: `${loteToDelete.nombre} ha sido eliminado`,
+        duration: 3000,
+      });
+      setModalOpen(false);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "❌ Error", 
+        description: error.message, 
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+      setLoteToDelete(null);
     }
   };
 
@@ -169,7 +203,7 @@ export default function LotesPage() {
                             variant="ghost" 
                             size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(lote.lote_id, lote.nombre)}
+                            onClick={() => handleDeleteClick(lote)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -183,6 +217,17 @@ export default function LotesPage() {
           )}
         </CardContent>
       </Card>
+       <Modal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title="Eliminar Lote"
+        description={`¿Está seguro de eliminar el lote "${loteToDelete?.nombre}"? Esta acción no se puede deshacer.`}
+        variant="destructive"
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

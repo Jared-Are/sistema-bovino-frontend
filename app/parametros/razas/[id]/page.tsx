@@ -85,6 +85,24 @@ export default function EditarRazaPage() {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No autorizado');
 
+      const checkResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/parametros/razas/check-nombre?nombre=${encodeURIComponent(valid.nombre)}&excludeId=${id}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        if (checkData.exists) {
+          toast({ 
+            title: "Error", 
+            description: `La raza "${valid.nombre}" ya está registrada`,
+            variant: "destructive" 
+          });
+          setSaving(false);
+          return;
+        }
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parametros/razas/${id}`, {
         method: 'PATCH',
         headers: {
