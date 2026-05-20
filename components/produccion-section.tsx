@@ -152,9 +152,22 @@ export function ProduccionSection() {
       );
     }
 
-    // Filtro por fecha
+    // Filtro por fecha o últimos 15 días por defecto
     if (filterDate) {
       result = result.filter(r => r.fecha === filterDate);
+    } else {
+      // Mostrar solo los últimos 15 días para no sobrecargar la vista
+      const quinceDiasAtras = new Date();
+      quinceDiasAtras.setDate(quinceDiasAtras.getDate() - 15);
+      quinceDiasAtras.setHours(0, 0, 0, 0);
+
+      result = result.filter(r => {
+        if (!r.fecha) return true;
+        const [year, month, day] = r.fecha.split('-');
+        if (!year || !month || !day) return true;
+        const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return d.getTime() >= quinceDiasAtras.getTime();
+      });
     }
 
     // Ordenamiento
@@ -270,14 +283,32 @@ export function ProduccionSection() {
                 <Beef className="w-12 h-12 text-zinc-300 mx-auto" />
               )}
             </div>
-            <p className="text-zinc-500 mb-4">
-              No hay registros de producción de {tipoActivo === 'leche' ? 'leche' : 'carne'}
-            </p>
-            <Link href="/produccion/nuevo">
-              <Button variant="link" className="text-emerald-600">
-                Registrar primer registro
-              </Button>
-            </Link>
+            
+            {(() => {
+              const today = new Date();
+              const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+              
+              if (filterDate && filterDate !== todayStr) {
+                return (
+                  <p className="text-zinc-500">
+                    No hubo producción de {tipoActivo === 'leche' ? 'leche' : 'carne'} registrada en este día.
+                  </p>
+                );
+              }
+
+              return (
+                <>
+                  <p className="text-zinc-500 mb-4">
+                    No hay registros de producción de {tipoActivo === 'leche' ? 'leche' : 'carne'}
+                  </p>
+                  <Link href="/produccion/nuevo">
+                    <Button variant="link" className="text-emerald-600">
+                      Registrar primer registro
+                    </Button>
+                  </Link>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
