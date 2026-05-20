@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 const lecheSchema = z.object({
     animalId: z.string().min(1, "Selecciona un animal"),
     numero_produccion: z.string().min(1, "El número de producción es obligatorio"),
-    cantidad: z.coerce.number().min(0.1, "Mínimo 0.1 litros").max(60, "Máximo 60 litros"),
+    cantidad: z.coerce.number().min(0.1, "Mínimo 0.1 litros").max(60, "Has llegado al máximo posible natural de producción de leche (60 litros por día)."),
 });
 
 const carneSchema = z.object({
@@ -50,6 +50,7 @@ export default function NuevaProduccionPage() {
     const [animales, setAnimales] = useState<AnimalSimple[]>([]);
     const [animalIdsPreñadas, setAnimalIdsPreñadas] = useState<Set<number>>(new Set());
     const [maxId, setMaxId] = useState(0);
+    const [lecheRecords, setLecheRecords] = useState<any[]>([]);
 
     const [tipo, setTipo] = useState<'leche' | 'carne'>('leche');
     const [formData, setFormData] = useState({
@@ -130,18 +131,23 @@ export default function NuevaProduccionPage() {
                     }
                 }
 
-                // Fetch productions to find max ID for the tag
+                // Fetch productions to find max ID for the tag (cache-busted)
+                const cacheBuster = `t=${Date.now()}`;
                 const [lecheRes, carneRes] = await Promise.all([
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion/leche`, { headers }),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion/carne`, { headers })
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion/leche?${cacheBuster}`, { headers, cache: 'no-store' }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/produccion/carne?${cacheBuster}`, { headers, cache: 'no-store' })
                 ]);
 
                 if (lecheRes.ok && carneRes.ok) {
                     const leche = await lecheRes.json();
                     const carne = await carneRes.json();
+                    
+                    const lecheArr = Array.isArray(leche) ? leche : (leche.data || []);
+                    setLecheRecords(lecheArr);
+
                     const allIds = [
-                        ...(Array.isArray(leche) ? leche : []).map((r: any) => r.id),
-                        ...(Array.isArray(carne) ? carne : []).map((r: any) => r.id)
+                        ...lecheArr.map((r: any) => r.id),
+                        ...(Array.isArray(carne) ? carne : (carne.data || [])).map((r: any) => r.id)
                     ];
                     if (allIds.length > 0) {
                         setMaxId(Math.max(...allIds));
@@ -192,6 +198,24 @@ export default function NuevaProduccionPage() {
                     cantidad: formData.cantidad ? Number(formData.cantidad) : undefined,
                 });
 
+                // Validación de total máximo por día basado en el prefijo del numero_produccion (L-DDMMYY-)
+                const prefixToMatch = valid.numero_produccion.substring(0, 9);
+                let totalHoy = 0;
+                lecheRecords.forEach(r => {
+                    const recAnimalId = r.animal?.animal_id?.toString() || r.animal?.id?.toString() || r.animalId?.toString() || r.animal_id?.toString();
+                    if (recAnimalId === valid.animalId) {
+                        const numProd = r.numero_produccion || r.numeroProduccion;
+                        if (numProd && numProd.startsWith(prefixToMatch)) {
+                            totalHoy += Number(r.cantidad) || 0;
+                        }
+                    }
+                });
+
+                const maxRestante = Math.max(0, 60 - totalHoy);
+                if (valid.cantidad > maxRestante) {
+                    throw new Error(`Has llegado al límite máximo diario (60 L). Ya se han registrado ${totalHoy} L hoy. Solo puedes añadir hasta ${maxRestante} L.`);
+                }
+
                 await produccionApi.createLeche({
                     numero_produccion: valid.numero_produccion,
                     cantidad: valid.cantidad,
@@ -215,6 +239,7 @@ export default function NuevaProduccionPage() {
                 className: "bg-green-600 text-white" 
             });
 
+            router.refresh(); // Invalidate Next.js client cache
             router.push("/produccion");
 
         } catch (err: any) {
@@ -336,7 +361,49 @@ export default function NuevaProduccionPage() {
                                             placeholder="Ej: 12.5"
                                             required
                                             value={formData.cantidad}
-                                            onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setFormData({ ...formData, cantidad: val });
+                                                
+                                                const prefixToMatch = formData.numero_produccion.substring(0, 9);
+                                                let totalHoy = 0;
+                                                lecheRecords.forEach(r => {
+                                                    const recAnimalId = r.animal?.animal_id?.toString() || r.animal?.id?.toString() || r.animalId?.toString() || r.animal_id?.toString();
+                                                    if (recAnimalId === formData.animalId) {
+                                                        const numProd = r.numero_produccion || r.numeroProduccion;
+                                                        if (numProd && numProd.startsWith(prefixToMatch)) {
+                                                            totalHoy += Number(r.cantidad) || 0;
+                                                        }
+                                                    }
+                                                });
+                                                
+                                                const maxRestante = Math.max(0, 60 - totalHoy);
+
+                                                if (Number(val) > maxRestante) {
+                                                    e.target.setCustomValidity(`Has llegado al límite máximo diario (60 L). Ya se han registrado ${totalHoy} L hoy. Solo puedes añadir hasta ${maxRestante} L.`);
+                                                } else {
+                                                    e.target.setCustomValidity("");
+                                                }
+                                            }}
+                                            onInvalid={(e) => {
+                                                const val = (e.target as HTMLInputElement).value;
+                                                const prefixToMatch = formData.numero_produccion.substring(0, 9);
+                                                let totalHoy = 0;
+                                                lecheRecords.forEach(r => {
+                                                    const recAnimalId = r.animal?.animal_id?.toString() || r.animal?.id?.toString() || r.animalId?.toString() || r.animal_id?.toString();
+                                                    if (recAnimalId === formData.animalId) {
+                                                        const numProd = r.numero_produccion || r.numeroProduccion;
+                                                        if (numProd && numProd.startsWith(prefixToMatch)) {
+                                                            totalHoy += Number(r.cantidad) || 0;
+                                                        }
+                                                    }
+                                                });
+                                                
+                                                const maxRestante = Math.max(0, 60 - totalHoy);
+                                                if (Number(val) > maxRestante) {
+                                                    (e.target as HTMLInputElement).setCustomValidity(`Has llegado al límite máximo diario (60 L). Ya se han registrado ${totalHoy} L hoy. Solo puedes añadir hasta ${maxRestante} L.`);
+                                                }
+                                            }}
                                         />
                                     </div>
                                 </div>

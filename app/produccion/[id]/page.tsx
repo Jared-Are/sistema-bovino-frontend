@@ -49,6 +49,8 @@ export default function EditarProduccionPage() {
     const [error, setError] = useState<string | null>(null);
     const [animales, setAnimales] = useState<AnimalSimple[]>([]);
     const [animalDelRegistro, setAnimalDelRegistro] = useState<AnimalSimple | null>(null);
+    const [lecheRecords, setLecheRecords] = useState<any[]>([]);
+    const [registroFecha, setRegistroFecha] = useState("");
 
     // Determinar el tipo basado en query param o detección
     const [tipo, setTipo] = useState<'leche' | 'carne'>('leche');
@@ -87,9 +89,11 @@ export default function EditarProduccionPage() {
                 try {
                     const lecheData = await produccionApi.getLeche(token);
                     const registros = Array.isArray(lecheData) ? lecheData : [];
+                    setLecheRecords(registros);
                     const registro = registros.find((r: any) => r.id.toString() === id);
                     if (registro) {
                         setTipo('leche');
+                        setRegistroFecha(registro.fecha_creacion || registro.fecha || "");
                         setFormData({
                             animalId: registro.animal?.animal_id?.toString() || "",
                             numero_produccion: registro.numero_produccion || "",
@@ -158,6 +162,23 @@ export default function EditarProduccionPage() {
                     cantidad: formData.cantidad ? Number(formData.cantidad) : undefined,
                 });
 
+                const prefixToMatch = formData.numero_produccion ? formData.numero_produccion.substring(0, 9) : "";
+                let totalMismoDia = 0;
+                lecheRecords.forEach(r => {
+                    const recAnimalId = r.animal?.animal_id?.toString() || r.animal?.id?.toString() || r.animalId?.toString() || r.animal_id?.toString();
+                    if (r.id.toString() !== id && recAnimalId === formData.animalId) {
+                        const numProd = r.numero_produccion || r.numeroProduccion;
+                        if (prefixToMatch && numProd && numProd.startsWith(prefixToMatch)) {
+                            totalMismoDia += Number(r.cantidad) || 0;
+                        }
+                    }
+                });
+
+                const maxRestante = Math.max(0, 60 - totalMismoDia);
+                if (valid.cantidad > maxRestante) {
+                    throw new Error(`Has llegado al límite máximo diario (60 L). Ya se han registrado ${totalMismoDia} L en este mismo día para este animal. Solo puedes modificar este registro hasta un máximo de ${maxRestante} L.`);
+                }
+
                 await produccionApi.updateLeche(id, {
                     cantidad: valid.cantidad,
                 }, token);
@@ -189,6 +210,7 @@ export default function EditarProduccionPage() {
                 className: "bg-green-600 text-white"
             });
 
+            router.refresh();
             router.push("/produccion");
 
         } catch (err: any) {
@@ -283,7 +305,51 @@ export default function EditarProduccionPage() {
                                             type="number" step="0.1" min="0.1" max="60" className="pl-8"
                                             required
                                             value={formData.cantidad}
-                                            onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setFormData({ ...formData, cantidad: val });
+                                                
+                                                const todayObj = new Date();
+                                                const prefixToMatch = formData.numero_produccion ? formData.numero_produccion.substring(0, 9) : "";
+                                                let totalMismoDia = 0;
+                                                lecheRecords.forEach(r => {
+                                                    const recAnimalId = r.animal?.animal_id?.toString() || r.animal?.id?.toString() || r.animalId?.toString() || r.animal_id?.toString();
+                                                    if (r.id.toString() !== id && recAnimalId === formData.animalId) {
+                                                        const numProd = r.numero_produccion || r.numeroProduccion;
+                                                        if (prefixToMatch && numProd && numProd.startsWith(prefixToMatch)) {
+                                                            totalMismoDia += Number(r.cantidad) || 0;
+                                                        }
+                                                    }
+                                                });
+                                                
+                                                const maxRestante = Math.max(0, 60 - totalMismoDia);
+
+                                                if (Number(val) > maxRestante) {
+                                                    e.target.setCustomValidity(`Has llegado al límite máximo diario (60 L). Ya hay ${totalMismoDia} L registrados este día. Solo puedes añadir hasta ${maxRestante} L.`);
+                                                } else {
+                                                    e.target.setCustomValidity("");
+                                                }
+                                            }}
+                                            onInvalid={(e) => {
+                                                const val = (e.target as HTMLInputElement).value;
+                                                const prefixToMatch = formData.numero_produccion ? formData.numero_produccion.substring(0, 9) : "";
+                                                let totalMismoDia = 0;
+                                                lecheRecords.forEach(r => {
+                                                    const recAnimalId = r.animal?.animal_id?.toString() || r.animal?.id?.toString() || r.animalId?.toString() || r.animal_id?.toString();
+                                                    if (r.id.toString() !== id && recAnimalId === formData.animalId) {
+                                                        const numProd = r.numero_produccion || r.numeroProduccion;
+                                                        if (prefixToMatch && numProd && numProd.startsWith(prefixToMatch)) {
+                                                            totalMismoDia += Number(r.cantidad) || 0;
+                                                        }
+                                                    }
+                                                });
+                                                
+                                                const maxRestante = Math.max(0, 60 - totalMismoDia);
+                                                
+                                                if (Number(val) > maxRestante) {
+                                                    (e.target as HTMLInputElement).setCustomValidity(`Has llegado al límite máximo diario (60 L). Ya hay ${totalMismoDia} L registrados este día. Solo puedes añadir hasta ${maxRestante} L.`);
+                                                }
+                                            }}
                                         />
                                     </div>
                                 </div>
