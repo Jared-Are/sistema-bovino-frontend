@@ -12,11 +12,15 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+const hoyStr = new Date().toISOString().split("T")[0];
+
 // ESQUEMA ZOD
 const diagnosticoSchema = z.object({
-    metodo: z.enum(["Palpación", "Ecografía", "Observación"]),
-    resultado: z.enum(["Positivo", "Negativo"]),
-    fecha_programacion: z.string().min(1, "La fecha de evaluación es obligatoria.")
+  metodo: z.enum(["Palpación", "Ecografía", "Observación"]),
+  resultado: z.enum(["Positivo", "Negativo"]),
+  fecha_programacion: z.string()
+    .min(1, "La fecha de evaluación es obligatoria.")
+    .refine((date) => date <= hoyStr, { message: "No puedes registrar fechas futuras." }),
 });
 
 function DiagnosticoForm() {
@@ -96,7 +100,7 @@ function DiagnosticoForm() {
             toast({ 
                 title: "¡Diagnóstico Registrado!", 
                 description: `La vaca ahora está ${formData.resultado === 'Positivo' ? 'Gestante' : 'Vacía'}.`, 
-                className: "bg-emerald-600 text-white" 
+                className: "bg-green-600 text-white" 
             });
             
             router.push("/reproduccion");
@@ -143,7 +147,7 @@ function DiagnosticoForm() {
                             <Label>Fecha de Evaluación *</Label>
                             <div className="relative">
                                 <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                                <Input type="date" className={`pl-8 ${fieldErrors.fecha_programacion ? "border-red-500 focus-visible:ring-red-500" : ""}`} 
+                                <Input type="date"  max={hoyStr}  className={`pl-8 ${fieldErrors.fecha_programacion ? "border-red-500 focus-visible:ring-red-500" : ""}`} 
                                     value={formData.fecha_programacion} 
                                     onChange={(e) => {
                                         setFormData({...formData, fecha_programacion: e.target.value});

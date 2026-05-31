@@ -33,11 +33,14 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-// 👇 FIX TYPESCRIPT: Separamos el esquema base de la condición refine
+const hoyStr = new Date().toISOString().split("T")[0];
+
 const baseReproduccionSchema = z.object({
   animalId: z.string().min(1, "Selecciona la vaca o novilla."),
   tipoServicio: z.enum(["Monta Natural", "Inseminación Artificial"]),
-  fechaServicio: z.string().min(1, "La fecha del servicio es requerida."),
+  fechaServicio: z.string()
+    .min(1, "La fecha del servicio es requerida.")
+    .refine((date) => date <= hoyStr, { message: "No puedes registrar fechas futuras." }),
   toroId: z.string().optional(),
   codigo_pajilla: z.string().optional(),
 });
@@ -64,6 +67,7 @@ type AnimalSimple = {
   nombre: string;
   sexo: string;
   fecha_nacimiento: string;
+  estado?: string; // Para validar si está Gestante
 };
 
 export default function NuevoRegistroReproduccionPage() {
@@ -86,7 +90,7 @@ export default function NuevoRegistroReproduccionPage() {
     codigo_pajilla: "",
   });
 
-  useEffect(() => {
+useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
@@ -99,33 +103,57 @@ export default function NuevoRegistroReproduccionPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         };
-        const animalesRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/animales?limit=200`,
-          { headers },
-        );
-        if (animalesRes.ok) {
+        
+        // 👇 FIX: Pedimos los animales Y las montas al mismo tiempo
+        const [animalesRes, montasRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/animales?limit=200`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/reproduccion/montas`, { headers })
+        ]);
+
+        if (animalesRes.ok && montasRes.ok) {
           const animalesData: AnimalSimple[] = await animalesRes.json();
+          const montasData = await montasRes.json();
+
+          // 1. Buscamos qué vacas ya tienen un proceso activo (Evaluación o Confirmada)
+          const vacasOcupadasIds = montasData
+            .filter((m: any) => m.estado === "En Evaluación" || m.estado === "Confirmada")
+            .map((m: any) => m.animal_hembra_id || m.hembra?.animal_id);
+
+          // 2. FILTRO DE VACAS (Hembras >= 15 meses y NO OCUPADAS)
           const vacasAptas = animalesData.filter((a) => {
             if (a.sexo.toLowerCase() !== "hembra") return false;
+            
+            // 👇 EL VERDADERO FIX: Si el ID de la vaca está en la lista de ocupadas, se bloquea
+            if (vacasOcupadasIds.includes(a.animal_id)) return false; 
 
-            // Calculamos la edad en meses
             const hoy = new Date();
             const nacimiento = new Date(a.fecha_nacimiento);
             const meses =
               (hoy.getFullYear() - nacimiento.getFullYear()) * 12 +
               (hoy.getMonth() - nacimiento.getMonth());
 
-            return meses >= 15; // Solo vacas de 15 meses o más
+            return meses >= 15;
           });
           setVacas(vacasAptas);
-          setToros(
-            animalesData.filter((a) => a.sexo.toLowerCase() === "macho"),
-          );
+
+          // 3. FILTRO DE TOROS (Machos >= 15 meses)
+          const torosAptos = animalesData.filter((a) => {
+            if (a.sexo.toLowerCase() !== "macho") return false;
+
+            const hoy = new Date();
+            const nacimiento = new Date(a.fecha_nacimiento);
+            const meses =
+              (hoy.getFullYear() - nacimiento.getFullYear()) * 12 +
+              (hoy.getMonth() - nacimiento.getMonth());
+
+            return meses >= 15;
+          });
+          setToros(torosAptos);
         }
       } catch (err) {
         toast({
           title: "Error",
-          description: "No se pudieron cargar los animales.",
+          description: "No se pudieron cargar los datos.",
           variant: "destructive",
         });
       } finally {
@@ -137,7 +165,6 @@ export default function NuevoRegistroReproduccionPage() {
 
   const validateField = (field: keyof typeof formData, value: any) => {
     try {
-      // 👇 Usamos el base schema aquí para evitar el error de shape
       const fieldSchema =
         baseReproduccionSchema.shape[
           field as keyof typeof baseReproduccionSchema.shape
@@ -158,7 +185,6 @@ export default function NuevoRegistroReproduccionPage() {
     setLoading(true);
 
     try {
-      // 👇 Usamos el esquema completo (con refine) para validar antes de guardar
       const valid = reproduccionSchema.parse(formData);
       const codigoAutomatico = `M-${new Date().getFullYear()}-${Math.floor(
         Math.random() * 1000,
@@ -335,6 +361,7 @@ export default function NuevoRegistroReproduccionPage() {
                   <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                   <Input
                     type="date"
+                    max={new Date().toISOString().split("T")[0]}
                     className={`pl-8 ${fieldErrors.fechaServicio ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={formData.fechaServicio}
                     onChange={(e) => {

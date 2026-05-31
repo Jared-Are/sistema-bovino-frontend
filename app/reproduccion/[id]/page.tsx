@@ -33,11 +33,15 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+const hoyStr = new Date().toISOString().split("T")[0];
+
 const baseEditarMontaSchema = z.object({
   numero_monta: z.string().min(3, "El número de servicio es obligatorio."),
   animal_hembra_id: z.string().min(1, "Debes seleccionar la vaca receptora."),
   tipo_monta: z.enum(["Monta Natural", "Inseminación Artificial"]),
-  fecha_programacion: z.string().min(1, "La fecha es requerida."),
+  fecha_programacion: z.string()
+    .min(1, "La fecha es requerida.")
+    .refine((date) => date <= hoyStr, { message: "No puedes registrar fechas futuras." }),
   estado: z.string(),
   animal_macho_id: z.string().optional(),
   codigo_pajilla: z.string().optional(),
@@ -216,7 +220,7 @@ export default function EditarReproduccionPage() {
       toast({
         title: "¡Actualizado!",
         description: "Cambios guardados.",
-        className: "bg-emerald-600 text-white",
+        className: "bg-green-600 text-white",
       });
       router.push("/reproduccion");
     } catch (err: any) {
@@ -336,20 +340,31 @@ export default function EditarReproduccionPage() {
               </div>
               <div className="space-y-2">
                 <Label>Fecha</Label>
-                <Input
-                  type="date"
-                  value={formData.fecha_programacion}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      fecha_programacion: e.target.value,
-                    })
-                  }
-                />
+                <div className="relative">
+                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="date"
+                    max={hoyStr}
+                    className={`pl-8 ${fieldErrors.fecha_programacion ? "border-red-500" : ""}`}
+                    value={formData.fecha_programacion}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        fecha_programacion: e.target.value,
+                      });
+                      validateField("fecha_programacion", e.target.value);
+                    }}
+                  />
+                </div>
+                {fieldErrors.fecha_programacion && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {fieldErrors.fecha_programacion}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* 👇 AQUI ESTÁ EL FIX: Usamos .includes("Natural") 👇 */}
             {formData.tipo_monta?.includes("Natural") ? (
               <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
                 <Label className="flex items-center gap-2 mb-2">
