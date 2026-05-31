@@ -267,6 +267,7 @@ function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLog
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [esModalObligatorio, setEsModalObligatorio] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('propietario');
   const [userName, setUserName] = useState('');
   const [fincaNombre, setFincaNombre] = useState('');
@@ -305,6 +306,14 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         if (usuario.finca) {
           setFincaNombre(usuario.finca.nombre || '');
           setFincaUbicacion(usuario.finca.ubicacion || '');
+        }
+
+        // Si la bandera debe_cambiar_contrasena es true, abrir el modal de forma obligatoria
+        if (usuario.debe_cambiar_contrasena === true) {
+          setIsModalOpen(true);
+          setEsModalObligatorio(true);
+        } else {
+          setEsModalObligatorio(false);
         }
       } catch (e) {
         console.error('Error parsing usuario:', e);
@@ -353,6 +362,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
+    setEsModalObligatorio(false);
   };
 
   const handleCloseModal = () => {
@@ -391,6 +401,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       <CambiarContrasenaModal 
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        esObligatorio={esModalObligatorio}
       />
     </SidebarContext.Provider>
   );

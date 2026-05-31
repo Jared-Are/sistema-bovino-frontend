@@ -15,9 +15,10 @@ import { Loader2, AlertCircle, Lock } from 'lucide-react';
 interface CambiarContrasenaModalProps {
   isOpen: boolean;
   onClose: () => void;
+  esObligatorio?: boolean;
 }
 
-export function CambiarContrasenaModal({ isOpen, onClose }: CambiarContrasenaModalProps) {
+export function CambiarContrasenaModal({ isOpen, onClose, esObligatorio = false }: CambiarContrasenaModalProps) {
   const [nuevaContrasena, setNuevaContrasena] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
   const [loading, setLoading] = useState(false);
@@ -83,6 +84,20 @@ export function CambiarContrasenaModal({ isOpen, onClose }: CambiarContrasenaMod
         throw new Error(data.message);
       }
 
+      // Actualizar localStorage para que ya no pida cambiar la contraseña
+      const usuarioStr = localStorage.getItem('usuario');
+      if (usuarioStr) {
+        try {
+          const usuario = JSON.parse(usuarioStr);
+          usuario.debe_cambiar_contrasena = false;
+          localStorage.setItem('usuario', JSON.stringify(usuario));
+          // Disparar evento para actualizar sidebar y remover estado obligatorio
+          window.dispatchEvent(new Event('login'));
+        } catch (err) {
+          console.error('Error al actualizar localStorage de usuario:', err);
+        }
+      }
+
       toast({
         title: "¡Contraseña Actualizada!",
         description: "Tu contraseña ha sido cambiada exitosamente",
@@ -102,6 +117,7 @@ export function CambiarContrasenaModal({ isOpen, onClose }: CambiarContrasenaMod
   };
 
   const handleClose = () => {
+    if (esObligatorio) return; // Bloquear cierre si es obligatorio
     setNuevaContrasena('');
     setConfirmarContrasena('');
     setErrors({});
@@ -117,7 +133,9 @@ export function CambiarContrasenaModal({ isOpen, onClose }: CambiarContrasenaMod
               Cambiar Contraseña
             </DialogTitle>
             <DialogDescription className="text-sm text-zinc-500 mt-1">
-              Ingresa tu nueva contraseña
+              {esObligatorio
+                ? 'Por seguridad, debes cambiar tu contraseña temporal antes de continuar utilizando la aplicación.'
+                : 'Ingresa tu nueva contraseña'}
             </DialogDescription>
           </DialogHeader>
 
@@ -182,13 +200,15 @@ export function CambiarContrasenaModal({ isOpen, onClose }: CambiarContrasenaMod
           </div>
 
           <DialogFooter>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors"
-            >
-              Cancelar
-            </button>
+            {!esObligatorio && (
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors"
+              >
+                Cancelar
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
