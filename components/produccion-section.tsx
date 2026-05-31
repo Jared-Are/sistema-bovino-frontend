@@ -284,23 +284,36 @@ export function ProduccionSection() {
                 <Beef className="w-12 h-12 text-zinc-300 mx-auto" />
               )}
             </div>
-            
+
             {(() => {
+              const DIAS_VENTANA = 15;
+              const tipo = tipoActivo === 'leche' ? 'leche' : 'carne';
               const today = new Date();
               const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-              
+
+              // Caso 1: hay fecha seleccionada (y no es hoy con búsqueda vacía)
               if (filterDate && filterDate !== todayStr) {
                 return (
                   <p className="text-zinc-500">
-                    No hubo producción de {tipoActivo === 'leche' ? 'leche' : 'carne'} registrada en este día.
+                    No hubo producción de {tipo} registrada en este día.
                   </p>
                 );
               }
 
+              // Caso 2: hay registros en la BD pero todos quedan fuera de la ventana de días
+              if (registrosActivos.length > 0) {
+                return (
+                  <p className="text-zinc-500">
+                    No ha habido producción de {tipo} en los últimos {DIAS_VENTANA} días.
+                  </p>
+                );
+              }
+
+              // Caso 3: no hay ningún registro en la BD
               return (
                 <>
                   <p className="text-zinc-500 mb-4">
-                    No hay registros de producción de {tipoActivo === 'leche' ? 'leche' : 'carne'}
+                    No hay registros de producción de {tipo}
                   </p>
                   <Link href="/produccion/nuevo">
                     <Button variant="link" className="text-emerald-600">
