@@ -21,9 +21,9 @@ export function ProduccionCards({ registros, onSelect }: ProduccionCardsProps) {
           <div
             key={`${reg.tipo}-${reg.id}`}
             onClick={() => onSelect(reg.id)}
-            className="cursor-pointer rounded-xl border border-zinc-200 bg-white p-4 transition-all shadow-sm hover:shadow-md hover:border-emerald-300 group"
+            className="cursor-pointer rounded-xl border border-zinc-200 bg-white p-3 sm:p-4 transition-all shadow-sm hover:shadow-md hover:border-emerald-300 group"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 font-mono text-xs">
                 {reg.arete}
               </Badge>
@@ -34,35 +34,35 @@ export function ProduccionCards({ registros, onSelect }: ProduccionCardsProps) {
               )}
             </div>
 
-            <h3 className="text-lg font-bold text-zinc-900 mb-1 truncate">
+            <h3 className="text-base sm:text-lg font-bold text-zinc-900 mb-1 truncate">
               {reg.nombreAnimal}
             </h3>
 
-            <div className="flex items-end gap-1 mb-4">
+            <div className="flex items-end gap-1 mb-3 sm:mb-4">
               {isLeche ? (
                 <>
-                  <span className="text-3xl font-black text-zinc-900">{reg.cantidad || 0}</span>
-                  <span className="text-sm text-zinc-500 mb-1 font-medium">Litros</span>
+                  <span className="text-2xl sm:text-3xl font-black text-zinc-900">{reg.cantidad || 0}</span>
+                  <span className="text-sm text-zinc-500 mb-0.5 sm:mb-1 font-medium">Litros</span>
                 </>
               ) : (
                 <>
-                  <span className="text-3xl font-black text-zinc-900">{reg.pesoCanal || 0}</span>
-                  <span className="text-sm text-zinc-500 mb-1 font-medium">kg canal</span>
+                  <span className="text-2xl sm:text-3xl font-black text-zinc-900">{reg.pesoCanal || 0}</span>
+                  <span className="text-sm text-zinc-500 mb-0.5 sm:mb-1 font-medium">kg canal</span>
                 </>
               )}
             </div>
 
-            <div className="pt-3 border-t border-zinc-100 flex items-center justify-between">
+            <div className="pt-2 sm:pt-3 border-t border-zinc-100 flex items-center justify-between">
               <div className="flex items-center text-xs text-zinc-500 gap-1">
                 <Calendar className="w-3 h-3" />
                 {reg.fecha}
               </div>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all ${
                 isLeche 
                   ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white' 
                   : 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white'
               }`}>
-                {isLeche ? <Droplets className="w-4 h-4" /> : <Beef className="w-4 h-4" />}
+                {isLeche ? <Droplets className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Beef className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               </div>
             </div>
           </div>

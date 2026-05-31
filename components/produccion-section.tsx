@@ -194,49 +194,50 @@ export function ProduccionSection() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
-        <div className="px-8 py-4">
-          <div className="flex items-center justify-between">
+        <div className="px-4 py-3 sm:px-8 sm:py-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900">Producción</h1>
-              <p className="text-sm text-zinc-500 mt-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-zinc-900">Producción</h1>
+              <p className="text-xs sm:text-sm text-zinc-500 mt-0.5 sm:mt-1">
                 {cargando ? 'Cargando...' : `${registrosFiltrados.length} registros encontrados`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={cargarDatos}
                 disabled={cargando}
+                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
               >
                 {cargando ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin mr-1 sm:mr-2" />
                 ) : null}
                 Actualizar
               </Button>
 
               <Link href="/produccion/nuevo">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
-                  <Plus className="w-4 h-4" />
-                  Registrar Producción
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2.5 sm:px-4">
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Registrar </span>Producción
                 </Button>
               </Link>
             </div>
           </div>
 
           {/* Tabs: Leche / Carne */}
-          <div className="mt-4">
+          <div className="mt-3 sm:mt-4 overflow-x-auto">
             <Tabs value={tipoActivo} onValueChange={(v) => setTipoActivo(v as TipoProduccion)}>
-              <TabsList className="bg-zinc-100">
-                <TabsTrigger value="leche" className="gap-2 data-[state=active]:bg-white">
-                  <Droplets className="w-4 h-4" />
+              <TabsList className="bg-zinc-100 h-8 sm:h-10">
+                <TabsTrigger value="leche" className="gap-1.5 sm:gap-2 text-xs sm:text-sm data-[state=active]:bg-white">
+                  <Droplets className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Leche
-                  <span className="ml-1 text-xs bg-zinc-200 px-1.5 py-0.5 rounded-full">{registrosLeche.length}</span>
+                  <span className="ml-0.5 sm:ml-1 text-xs bg-zinc-200 px-1 sm:px-1.5 py-0.5 rounded-full">{registrosLeche.length}</span>
                 </TabsTrigger>
-                <TabsTrigger value="carne" className="gap-2 data-[state=active]:bg-white">
-                  <Beef className="w-4 h-4" />
+                <TabsTrigger value="carne" className="gap-1.5 sm:gap-2 text-xs sm:text-sm data-[state=active]:bg-white">
+                  <Beef className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Carne
-                  <span className="ml-1 text-xs bg-zinc-200 px-1.5 py-0.5 rounded-full">{registrosCarne.length}</span>
+                  <span className="ml-0.5 sm:ml-1 text-xs bg-zinc-200 px-1 sm:px-1.5 py-0.5 rounded-full">{registrosCarne.length}</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -244,7 +245,7 @@ export function ProduccionSection() {
         </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <ProduccionFilters
           onSearchChange={setSearch}
           onSortChange={setSortBy}
@@ -275,7 +276,7 @@ export function ProduccionSection() {
             }}
           />
         ) : (
-          <div className="text-center py-24 bg-white rounded-xl border border-dashed border-zinc-300">
+          <div className="text-center py-12 sm:py-24 bg-white rounded-xl border border-dashed border-zinc-300">
             <div className="mb-4">
               {tipoActivo === 'leche' ? (
                 <Droplets className="w-12 h-12 text-zinc-300 mx-auto" />

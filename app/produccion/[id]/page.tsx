@@ -224,7 +224,7 @@ export default function EditarProduccionPage() {
 
     if (pageLoading) {
         return (
-            <div className="min-h-screen bg-zinc-50 p-8 flex justify-center items-center">
+            <div className="min-h-screen bg-zinc-50 p-4 sm:p-8 flex justify-center items-center">
                 <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
             </div>
         );
@@ -232,7 +232,7 @@ export default function EditarProduccionPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-zinc-50 p-8">
+            <div className="min-h-screen bg-zinc-50 p-4 sm:p-8">
                 <div className="flex flex-col items-center justify-center h-64 text-center p-6 bg-red-50 rounded-lg border border-red-100 max-w-lg mx-auto">
                     <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
                     <h3 className="text-lg font-bold text-red-700 mb-2">Error al cargar registro</h3>
@@ -246,14 +246,14 @@ export default function EditarProduccionPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 p-8">
+        <div className="min-h-screen bg-zinc-50 p-4 sm:p-8">
             <Link href="/produccion">
-                <Button variant="ghost" size="sm" className="mb-6">
+                <Button variant="ghost" size="sm" className="mb-4 sm:mb-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Volver
                 </Button>
             </Link>
 
-            <Card className="max-w-3xl mx-auto">
+            <Card className="w-full sm:max-w-3xl sm:mx-auto">
                 <CardHeader>
                     <CardTitle className="text-2xl">
                         Editar Registro de {tipo === 'leche' ? 'Leche' : 'Carne'}
@@ -386,13 +386,13 @@ export default function EditarProduccionPage() {
                             </div>
                         )}
 
-                        <div className="flex gap-3 pt-4">
-                            <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                            <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
                                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                                 {saving ? "Guardando..." : "Guardar Cambios"}
                             </Button>
-                            <Link href="/produccion">
-                                <Button type="button" variant="outline">Cancelar</Button>
+                            <Link href="/produccion" className="w-full sm:w-auto">
+                                <Button type="button" variant="outline" className="w-full">Cancelar</Button>
                             </Link>
                         </div>
                     </form>
