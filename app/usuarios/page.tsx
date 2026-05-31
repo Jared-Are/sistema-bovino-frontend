@@ -31,7 +31,7 @@ type Usuario = {
   nombre: string;
   telefono: string;
   email?: string;
-  rol: 'PROPIETARIO' | 'VETERINARIO' | 'OPERARIO';
+  rol: 'propietario' | 'veterinario' | 'operario';  // minúsculas = lo que guarda la BD
   estado: 'ACTIVO' | 'INVITADO' | 'BLOQUEADO';
 };
 
@@ -42,7 +42,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [rolEditando, setRolEditando] = useState<'PROPIETARIO' | 'VETERINARIO' | 'OPERARIO' | null>(null);
+  const [rolEditando, setRolEditando] = useState<'propietario' | 'veterinario' | 'operario' | null>(null);
   const [usuarioActual, setUsuarioActual] = useState<{ usuario_id: string; rol: string } | null>(null);
   
   const [modalOpen, setModalOpen] = useState(false);
@@ -101,7 +101,7 @@ export default function UsuariosPage() {
   );
 
   const handleDeleteClick = (usuario: Usuario) => {
-    if (usuario.rol === 'PROPIETARIO') {
+    if (usuario.rol === 'propietario') {
       toast({ 
         title: "⚠️ No se puede eliminar", 
         description: "El propietario no puede ser eliminado",
@@ -226,32 +226,24 @@ export default function UsuariosPage() {
 
   const getRolColor = (rol: string) => {
     switch(rol) {
-      case 'PROPIETARIO':
-        return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'VETERINARIO':
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'OPERARIO':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'propietario': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'veterinario': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'operario':    return 'bg-blue-100 text-blue-700 border-blue-200';
+      default:            return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   const getRolLabel = (rol: string) => {
     switch(rol) {
-      case 'PROPIETARIO':
-        return 'Propietario';
-      case 'VETERINARIO':
-        return 'Veterinario';
-      case 'OPERARIO':
-        return 'Operario';
-      default:
-        return rol;
+      case 'propietario': return 'Propietario';
+      case 'veterinario': return 'Veterinario';
+      case 'operario':    return 'Operario';
+      default:            return rol;
     }
   };
 
   const puedeEditar = (usuario: Usuario) => {
-    return usuarioActual?.rol === 'PROPIETARIO' && usuarioActual.usuario_id !== usuario.usuario_id;
+    return usuarioActual?.rol === 'propietario' && usuarioActual.usuario_id !== usuario.usuario_id;
   };
 
   return (
@@ -364,8 +356,8 @@ export default function UsuariosPage() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="VETERINARIO">Veterinario</SelectItem>
-                                  <SelectItem value="OPERARIO">Operario</SelectItem>
+                                  <SelectItem value="veterinario">Veterinario</SelectItem>
+                                  <SelectItem value="operario">Operario</SelectItem>
                                 </SelectContent>
                               </Select>
                               <Button 
@@ -411,7 +403,7 @@ export default function UsuariosPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center">
-                            {usuario.rol !== 'PROPIETARIO' && usuario.usuario_id !== usuarioActual?.usuario_id && (
+                            {usuario.rol !== 'propietario' && usuario.usuario_id !== usuarioActual?.usuario_id && (
                               <Button 
                                 variant="ghost" 
                                 size="icon"
