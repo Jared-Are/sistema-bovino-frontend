@@ -83,14 +83,6 @@ export function TratamientoDetailsSheet({
     }
   };
 
-  const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
-
   const handleDelete = async () => {
     setDeleting(true);
     try {
@@ -190,7 +182,7 @@ export function TratamientoDetailsSheet({
                 </div>
                 <div className="bg-white rounded-xl p-4 border border-zinc-200 flex flex-col items-center justify-center text-center shadow-sm">
                   <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Fecha de Aplicación</p>
-                  <p className="text-lg font-black text-zinc-900 mt-1">{formatFecha(tratamiento.fecha)}</p>
+                  <p className="text-lg font-black text-zinc-900 mt-1">{tratamiento.fecha}</p>
                 </div>
               </div>
             </SheetHeader>
@@ -238,11 +230,6 @@ export function TratamientoDetailsSheet({
                         </Badge>
                       </div>
                     </div>
-                    {tratamiento.fecha_creacion && (
-                      <p className="text-xs text-zinc-400">
-                        Registrado: {formatFecha(tratamiento.fecha_creacion)}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
