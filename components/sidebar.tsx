@@ -50,13 +50,11 @@ const menuConfig: Record<UserRole, Array<{ id: string; label: string; icon: any;
     { id: 'usuarios', label: 'Usuarios', icon: Users, href: '/usuarios' },
   ],
   veterinario: [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/' },
     { id: 'animales', label: 'Animales', icon: Beef, href: '/animales' },
     { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
     { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
   ],
   operario: [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/' },
     { id: 'animales', label: 'Animales', icon: Beef, href: '/animales' },
     { id: 'reproduccion', label: 'Reproducción', icon: Heart, href: '/reproduccion' },
     { id: 'salud', label: 'Salud', icon: Stethoscope, href: '/salud' },
@@ -90,10 +88,10 @@ function MobileSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogo
           <SheetTitle>Menú de navegación</SheetTitle>
           <SheetDescription>Navega por las secciones de la aplicación</SheetDescription>
         </SheetHeader>
-        <SidebarContent 
-          isExpanded={true} 
-          userRole={userRole} 
-          userName={userName} 
+        <SidebarContent
+          isExpanded={true}
+          userRole={userRole}
+          userName={userName}
           fincaNombre={fincaNombre}
           fincaUbicacion={fincaUbicacion}
           onLogout={onLogout}
@@ -105,17 +103,17 @@ function MobileSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLogo
   );
 }
 
-function SidebarContent({ 
-  isExpanded, 
-  userRole, 
-  userName, 
+function SidebarContent({
+  isExpanded,
+  userRole,
+  userName,
   fincaNombre,
   fincaUbicacion,
-  onLogout, 
+  onLogout,
   onOpenModal,
-  menuItems, 
-  onToggle, 
-  showToggle = false 
+  menuItems,
+  onToggle,
+  showToggle = false
 }: any) {
   const pathname = usePathname();
   const rolValido = userRole as UserRole;
@@ -148,7 +146,7 @@ function SidebarContent({
         {menuItems.map((item: any) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
-          
+
           return (
             <Link
               key={item.id}
@@ -198,7 +196,7 @@ function SidebarContent({
             )}
           </button>
         </div>
-        
+
         <div className="p-2">
           <button
             onClick={onLogout}
@@ -248,10 +246,10 @@ function DesktopSidebar({ userRole, userName, fincaNombre, fincaUbicacion, onLog
         isExpanded ? "w-64" : "w-16"
       )}
     >
-      <SidebarContent 
-        isExpanded={isExpanded} 
-        userRole={userRole} 
-        userName={userName} 
+      <SidebarContent
+        isExpanded={isExpanded}
+        userRole={userRole}
+        userName={userName}
         fincaNombre={fincaNombre}
         fincaUbicacion={fincaUbicacion}
         onLogout={onLogout}
@@ -274,7 +272,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [fincaUbicacion, setFincaUbicacion] = useState('');
   const router = useRouter();
   const isMobile = useIsMobile();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
   const isLoginPage = pathname === '/';
 
   const toggleSidebar = () => {
@@ -285,7 +283,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('token');
     const usuarioStr = localStorage.getItem('usuario');
     const rol = localStorage.getItem('userRole') as UserRole | null;
-    
+
     if (!token) {
       setUserRole('propietario');
       setUserName('');
@@ -302,7 +300,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       try {
         const usuario = JSON.parse(usuarioStr);
         setUserName(usuario.nombre || 'Usuario');
-        
+
         if (usuario.finca) {
           setFincaNombre(usuario.finca.nombre || '');
           setFincaUbicacion(usuario.finca.ubicacion || '');
@@ -332,7 +330,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         setFincaUbicacion('');
         return;
       }
-      
+
       if (e.key === 'usuario' || e.key === 'userRole') {
         cargarDatosUsuario();
       }
@@ -351,12 +349,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('usuario');
     localStorage.removeItem('userRole');
-    
+
     setUserRole('propietario');
     setUserName('');
     setFincaNombre('');
     setFincaUbicacion('');
-    
+
     router.push('/');
   };
 
@@ -374,9 +372,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   return (
     <SidebarContext.Provider value={{ isExpanded, toggleSidebar }}>
       {!isLoginPage && (isMobile ? (
-        <MobileSidebar 
-          userRole={userRole} 
-          userName={userName} 
+        <MobileSidebar
+          userRole={userRole}
+          userName={userName}
           fincaNombre={fincaNombre}
           fincaUbicacion={fincaUbicacion}
           onLogout={handleLogout}
@@ -384,9 +382,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           menuItems={menuItems}
         />
       ) : (
-        <DesktopSidebar 
-          userRole={userRole} 
-          userName={userName} 
+        <DesktopSidebar
+          userRole={userRole}
+          userName={userName}
           fincaNombre={fincaNombre}
           fincaUbicacion={fincaUbicacion}
           onLogout={handleLogout}
@@ -397,8 +395,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         />
       ))}
       {children}
-      
-      <CambiarContrasenaModal 
+
+      <CambiarContrasenaModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         esObligatorio={esModalObligatorio}
