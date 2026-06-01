@@ -189,20 +189,24 @@ export function DashboardSection() {
                 return rFecha && new Date(rFecha).getMonth() === mesActual;
             }).length;
 
-            const vacasPreñadas = animals.filter((a: any) =>
-                a.estado_reproductivo === 'Gestante' ||
-                a.estado_reproductivo === 'Gestantes' ||
-                a.estado_reproductivo === 'Preñada'
-            ).length;
+            // Vacas preñadas basadas en montas confirmadas (que no han tenido parto aún)
+            const vacasPreñadas = repro.filter((r: any) => r.estado === 'Confirmada').length;
 
             const partosMes = partos.filter((p: any) => {
                 const pFecha = p.fecha_parto || p.fecha_creacion;
                 return pFecha && new Date(pFecha).getMonth() === mesActual;
             }).length;
 
-            // Simular tasa de preñez si no tenemos el historial completo de diagnósticos
-            // pero podemos basarlo en montas + vacas que pasaron a gestante
-            const tasaPreñez = animals.length > 0 ? Math.round((vacasPreñadas / animals.filter((a: any) => a.sexo === 'Hembra').length) * 100) : 0;
+            // Tasa de preñez basada en las montas del mes actual
+            const montasTotalesMes = repro.filter((r: any) => {
+                const rFecha = r.fecha || r.fecha_creacion;
+                return rFecha && new Date(rFecha).getMonth() === mesActual;
+            });
+            const montasConfirmadasMes = montasTotalesMes.filter((r: any) => r.estado === 'Confirmada');
+            
+            const tasaPreñez = montasTotalesMes.length > 0 
+                ? Number((montasConfirmadasMes.length / montasTotalesMes.length * 100).toFixed(1)) 
+                : 0;
 
             // Tendencia de producción (últimos 7 días)
             const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
