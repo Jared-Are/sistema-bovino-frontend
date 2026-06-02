@@ -80,7 +80,7 @@ export function TratamientoCard({ tratamiento, onClick }: TratamientoCardProps) 
       <div className="p-4 pt-2 border-t border-zinc-100 mt-auto">
         <div className="flex items-center text-sm text-zinc-600 mb-2">
           <Calendar className="w-4 h-4 mr-2 text-zinc-400 shrink-0" />
-          <span>{new Date(tratamiento.fecha).toLocaleDateString()}</span>
+          <span>{tratamiento.fecha}</span>
         </div>
         {tratamiento.descripcion && (
           <p className="text-xs text-zinc-500 line-clamp-2">

@@ -6,15 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Plus, 
   Search, 
   Pencil, 
   Trash2, 
   Loader2,
-  Save,
-  X,
   Mail,
   Phone,
   User,
@@ -31,8 +28,9 @@ type Usuario = {
   nombre: string;
   telefono: string;
   email?: string;
-  rol: 'propietario' | 'veterinario' | 'operario';  // minúsculas = lo que guarda la BD
+  rol: 'propietario' | 'veterinario' | 'operario';
   estado: 'ACTIVO' | 'INVITADO' | 'BLOQUEADO';
+  debe_cambiar_contrasena: boolean;
 };
 
 export default function UsuariosPage() {
@@ -41,8 +39,6 @@ export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [rolEditando, setRolEditando] = useState<'propietario' | 'veterinario' | 'operario' | null>(null);
   const [usuarioActual, setUsuarioActual] = useState<{ usuario_id: string; rol: string } | null>(null);
   
   const [modalOpen, setModalOpen] = useState(false);
@@ -151,50 +147,6 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleGuardarRol = async (usuario: Usuario) => {
-    if (!rolEditando || rolEditando === usuario.rol) {
-      setEditandoId(null);
-      setRolEditando(null);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios/${usuario.usuario_id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ rol: rolEditando }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error al actualizar rol');
-      }
-
-      setUsuarios(usuarios.map(u => 
-        u.usuario_id === usuario.usuario_id 
-          ? { ...u, rol: rolEditando }
-          : u
-      ));
-
-      toast({ 
-        title: "✅ Rol actualizado", 
-        description: `El rol ha sido cambiado a ${getRolLabel(rolEditando)}`,
-        duration: 3000,
-      });
-    } catch (error: any) {
-      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
-    } finally {
-      setEditandoId(null);
-      setRolEditando(null);
-    }
-  };
-
   const getEstadoBadge = (estado: string) => {
     switch(estado) {
       case 'ACTIVO':
@@ -243,7 +195,7 @@ export default function UsuariosPage() {
   };
 
   const puedeEditar = (usuario: Usuario) => {
-    return usuarioActual?.rol === 'propietario' && usuarioActual.usuario_id !== usuario.usuario_id;
+    return usuarioActual?.rol === 'propietario';
   };
 
   return (
@@ -308,7 +260,7 @@ export default function UsuariosPage() {
                     <TableHead>Contacto</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Rol</TableHead>
-                    <TableHead className="text-center">Acción</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -346,70 +298,32 @@ export default function UsuariosPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          {editandoId === usuario.usuario_id ? (
-                            <div className="flex items-center gap-2">
-                              <Select 
-                                value={rolEditando || usuario.rol} 
-                                onValueChange={(v: any) => setRolEditando(v)}
-                              >
-                                <SelectTrigger className="w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="veterinario">Veterinario</SelectItem>
-                                  <SelectItem value="operario">Operario</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-green-600"
-                                onClick={() => handleGuardarRol(usuario)}
-                              >
-                                <Save className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-red-600"
-                                onClick={() => {
-                                  setEditandoId(null);
-                                  setRolEditando(null);
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRolColor(usuario.rol)}`}>
-                                {getRolLabel(usuario.rol)}
-                              </span>
-                              {puedeEditar(usuario) && (
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="h-6 w-6"
-                                  onClick={() => {
-                                    setEditandoId(usuario.usuario_id);
-                                    setRolEditando(usuario.rol);
-                                  }}
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRolColor(usuario.rol)}`}>
+                            {getRolLabel(usuario.rol)}
+                          </span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {puedeEditar(usuario) && (
+                              <Link href={`/usuarios/${usuario.usuario_id}`}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                  title="Editar usuario"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                            
                             {usuario.rol !== 'propietario' && usuario.usuario_id !== usuarioActual?.usuario_id && (
                               <Button 
                                 variant="ghost" 
                                 size="icon"
                                 className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                 onClick={() => handleDeleteClick(usuario)}
-                                title="Eliminar"
+                                title="Eliminar usuario"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -437,6 +351,6 @@ export default function UsuariosPage() {
         loading={deleting}
         onConfirm={handleDelete}
       />
-      </div>
+    </div>
   );
 }
