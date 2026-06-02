@@ -73,6 +73,19 @@ export function CambiarContrasenaModal({ isOpen, onClose, esObligatorio = false 
         }),
       });
 
+      if (response.status === 401) {
+        toast({
+          title: "Sesión Expirada",
+          description: "Tu sesión ha expirado por seguridad o el usuario ya no existe. Por favor, inicia sesión de nuevo.",
+          variant: "destructive",
+        });
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+        localStorage.removeItem('userRole');
+        window.location.href = '/';
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
