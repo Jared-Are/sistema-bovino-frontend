@@ -49,14 +49,24 @@ import { cn } from '@/lib/utils';
 const getLocalDate = (dateString?: string) => {
     if (!dateString) return '';
     try {
-        const d = new Date(dateString);
-        if (isNaN(d.getTime())) return dateString.split('T')[0];
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
+        const cleanStr = dateString.split('T')[0];
+        const [year, month, day] = cleanStr.split('-');
+        if (!year || !month || !day) return dateString.split('T')[0];
         return `${year}-${month}-${day}`;
     } catch {
         return dateString.split('T')[0];
+    }
+};
+
+const getLocalDateObj = (dateString?: string): Date | null => {
+    if (!dateString) return null;
+    try {
+        const cleanStr = dateString.split('T')[0];
+        const [year, month, day] = cleanStr.split('-');
+        if (!year || !month || !day) return null;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+    } catch {
+        return null;
     }
 };
 
@@ -240,8 +250,8 @@ export function DashboardSection() {
             const montasEsteMes = repro.filter((r: any) => {
                 const f = r.fecha_programacion || r.fecha_creacion;
                 if (!f) return false;
-                const d = new Date(f);
-                return d.getMonth() === mesActual && d.getFullYear() === anoActual;
+                const d = getLocalDateObj(f);
+                return d && d.getMonth() === mesActual && d.getFullYear() === anoActual;
             });
 
             // Vacas preñadas = montas confirmadas activas
@@ -251,8 +261,8 @@ export function DashboardSection() {
             const partosMes = partos.filter((p: any) => {
                 const f = p.fecha_parto || p.fecha_creacion;
                 if (!f) return false;
-                const d = new Date(f);
-                return d.getMonth() === mesActual && d.getFullYear() === anoActual;
+                const d = getLocalDateObj(f);
+                return d && d.getMonth() === mesActual && d.getFullYear() === anoActual;
             }).length;
 
             // Tasa de preñez del mes
@@ -350,8 +360,8 @@ export function DashboardSection() {
             const enfermedadesMes = salud.filter((t: any) => {
                 const f = t.fecha || t.fecha_creacion;
                 if (!f) return false;
-                const d = new Date(f);
-                return d.getMonth() === mesActual && d.getFullYear() === anoActual;
+                const d = getLocalDateObj(f);
+                return d && d.getMonth() === mesActual && d.getFullYear() === anoActual;
             });
             const enfCount: Record<string, number> = {};
             for (const t of enfermedadesMes) {
@@ -366,8 +376,8 @@ export function DashboardSection() {
             // Mortalidad: animales con fecha_eliminacion en el mes actual
             const mortalidadMes = animals.filter((a: any) => {
                 if (!a.fecha_eliminacion) return false;
-                const d = new Date(a.fecha_eliminacion);
-                return d.getMonth() === mesActual && d.getFullYear() === anoActual;
+                const d = getLocalDateObj(a.fecha_eliminacion);
+                return d && d.getMonth() === mesActual && d.getFullYear() === anoActual;
             }).length;
 
             // Animales nuevos en los últimos 30 días
@@ -525,11 +535,11 @@ export function DashboardSection() {
     const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
     // Mapa fijo nombre→color: independiente del orden o cantidad de estados presentes
     const MONTA_COLOR_MAP: Record<string, string> = {
-        'Confirmada':     '#10b981', // verde
+        'Confirmada': '#10b981', // verde
         'En Evaluación': '#8486e2', // lavanda
-        'Fallida':        '#ef4444', // rojo
-        'Parto Exitoso':  '#3b82f6', // azul
-        'Aborto':         '#1a0f0a', // negro
+        'Fallida': '#ef4444', // rojo
+        'Parto Exitoso': '#3b82f6', // azul
+        'Aborto': '#1a0f0a', // negro
     };
     const MONTA_COLOR_FALLBACK = '#a855f7'; // morado para estados desconocidos
     const d = data as any; // para acceder a _enfermedadesChart
@@ -571,11 +581,11 @@ export function DashboardSection() {
             </div>
 
             {/* ── Tabs principales ── */}
-            <Tabs defaultValue="produccion" className="space-y-6">
-                <TabsList className="bg-white border border-zinc-200 rounded-xl">
-                    <TabsTrigger value="produccion">🥛 Producción</TabsTrigger>
-                    <TabsTrigger value="reproduccion">🐄 Reproducción</TabsTrigger>
-                    <TabsTrigger value="salud">💉 Salud & Inventario</TabsTrigger>
+            <Tabs defaultValue="produccion" className="space-y-12">
+                <TabsList className="bg-gray-200 border border-zinc-400 rounded-xl">
+                    <TabsTrigger value="produccion" className="w-[250px]">Producción</TabsTrigger>
+                    <TabsTrigger value="reproduccion" className="w-[250px]">Reproducción</TabsTrigger>
+                    <TabsTrigger value="salud" className="w-[250px]">Salud & Inventario</TabsTrigger>
                 </TabsList>
 
                 {/* ══════════ TAB PRODUCCIÓN ══════════ */}
