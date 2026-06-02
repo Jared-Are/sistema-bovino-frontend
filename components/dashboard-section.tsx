@@ -143,15 +143,15 @@ const KPICard = ({
 
     return (
         <Card className={cn('hover:shadow-md transition-all', alert && 'border-rose-200 bg-rose-50/30')}>
-            <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
+            <CardContent className="p-3 sm:p-5">
+                <div className="flex items-start justify-between gap-2 sm:gap-3">
                     <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest truncate">{title}</p>
-                        <h3 className={cn('text-2xl font-black mt-0.5', textMap[color])}>{value}</h3>
-                        <p className="text-xs text-zinc-400 mt-1 leading-tight">{subtitle}</p>
+                        <p className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-widest truncate">{title}</p>
+                        <h3 className={cn('text-xl sm:text-2xl font-black mt-0.5', textMap[color])}>{value}</h3>
+                        <p className="text-[11px] sm:text-xs text-zinc-400 mt-1 leading-tight">{subtitle}</p>
                     </div>
-                    <div className={cn('p-2.5 rounded-xl shrink-0', colorMap[color])}>
-                        <Icon className="w-5 h-5" />
+                    <div className={cn('p-2 sm:p-2.5 rounded-xl shrink-0', colorMap[color])}>
+                        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                 </div>
             </CardContent>
@@ -548,10 +548,10 @@ export function DashboardSection() {
         <div className="space-y-8 animate-in fade-in duration-700">
 
             {/* ── Header barra de reportes ── */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm">
                 <div>
-                    <h2 className="text-xl font-bold text-zinc-900">PANEL DE CONTROL</h2>
-                    <p className="text-xs text-zinc-400 mt-0.5">Resumen general del hato · Datos en tiempo real</p>
+                    <h2 className="text-lg sm:text-xl font-bold text-zinc-900">PANEL DE CONTROL</h2>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">Resumen general del hato · Datos en tiempo real</p>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Button
@@ -573,7 +573,7 @@ export function DashboardSection() {
             </div>
 
             {/* ── KPIs principales (fila top) ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 <KPICard title="Total Hato" value={data.totalAnimals} subtitle="Animales registrados" icon={Users} color="blue" />
                 <KPICard title="Leche Hoy" value={`${data.productionToday} L`} subtitle="Producción diaria" icon={Milk} color="emerald" />
                 <KPICard title="Vacas Preñadas" value={data.vacasPreñadas} subtitle="Montas confirmadas" icon={Heart} color="amber" />
@@ -581,17 +581,17 @@ export function DashboardSection() {
             </div>
 
             {/* ── Tabs principales ── */}
-            <Tabs defaultValue="produccion" className="space-y-12">
-                <TabsList className="bg-gray-200 border border-zinc-400 rounded-xl">
-                    <TabsTrigger value="produccion" className="w-[250px]">Producción</TabsTrigger>
-                    <TabsTrigger value="reproduccion" className="w-[250px]">Reproducción</TabsTrigger>
-                    <TabsTrigger value="salud" className="w-[250px]">Salud & Inventario</TabsTrigger>
+            <Tabs defaultValue="produccion" className="space-y-6 sm:space-y-12">
+                <TabsList className="bg-gray-200 border border-zinc-400 rounded-xl w-full flex">
+                    <TabsTrigger value="produccion" className="flex-1 text-xs sm:text-sm">Producción</TabsTrigger>
+                    <TabsTrigger value="reproduccion" className="flex-1 text-xs sm:text-sm">Reproducción</TabsTrigger>
+                    <TabsTrigger value="salud" className="flex-1 text-xs sm:text-sm">Salud & Inventario</TabsTrigger>
                 </TabsList>
 
                 {/* ══════════ TAB PRODUCCIÓN ══════════ */}
                 <TabsContent value="produccion" className="space-y-6">
                     {/* KPIs de producción */}
-                    <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <KPICard
                             title="Peso Prom. Canal"
                             value={data.pesoPromedioCanal > 0 ? `${data.pesoPromedioCanal} kg` : '—'}
@@ -611,14 +611,15 @@ export function DashboardSection() {
                     {/* Gráfica tendencia */}
                     <Card className="border-none shadow-sm">
                         <CardHeader className="bg-zinc-50/50 border-b border-zinc-100">
-                            <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
+                            <CardTitle className="text-xs sm:text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
                                 <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                Tendencia de Producción — Últimos 7 días
+                                <span className="hidden sm:inline">Tendencia de Producción — Últimos 7 días</span>
+                                <span className="sm:hidden">Tendencia 7 días</span>
                             </CardTitle>
-                            <CardDescription>Litros de leche y kg de carne por día</CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">Litros de leche y kg de carne por día</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-6">
-                            <div className="h-[280px]">
+                        <CardContent className="p-3 sm:p-6">
+                            <div className="h-[200px] sm:h-[280px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={data.productionTrend}>
                                         <defs>
@@ -648,7 +649,7 @@ export function DashboardSection() {
                 {/* ══════════ TAB REPRODUCCIÓN ══════════ */}
                 <TabsContent value="reproduccion" className="space-y-6">
                     {/* KPIs de reproducción */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                         <KPICard
                             title="Tasa de Preñez (mes)"
                             value={`${data.tasaPreñez}%`}
@@ -673,13 +674,13 @@ export function DashboardSection() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         {/* Donut: Estado de montas (datos reales y significativos) */}
                         <Card className="border-none shadow-sm">
                             <CardHeader className="bg-zinc-50/50 border-b border-zinc-100">
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
                                     <div>
-                                        <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
+                                        <CardTitle className="text-xs sm:text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
                                             <Heart className="w-4 h-4 text-amber-500" />
                                             Resultado de Montas
                                         </CardTitle>
@@ -714,7 +715,7 @@ export function DashboardSection() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-6">
+                            <CardContent className="p-3 sm:p-6">
                                 {(() => {
                                     const chartData = montasScope === 'total' ? data.montasChart : data.montasChartMes;
                                     const total = chartData.reduce((s: number, m: any) => s + m.value, 0);
@@ -774,12 +775,12 @@ export function DashboardSection() {
                         {/* Resumen reproductivo detallado */}
                         <Card className="border-none shadow-sm">
                             <CardHeader className="bg-zinc-50/50 border-b border-zinc-100">
-                                <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
+                                <CardTitle className="text-xs sm:text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
                                     <Baby className="w-4 h-4 text-amber-500" />
                                     Resumen Reproductivo
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-3">
+                            <CardContent className="p-3 sm:p-6 space-y-2 sm:space-y-3">
                                 {[
                                     { label: 'Vacas preñadas (activas)', value: data.vacasPreñadas, color: 'text-amber-600' },
                                     { label: 'Partos este mes', value: data.partosMes, color: 'text-emerald-600' },
@@ -788,9 +789,9 @@ export function DashboardSection() {
                                     { label: 'Tasa de preñez del mes', value: `${data.tasaPreñez}%`, color: 'text-amber-600' },
                                     { label: 'Concepción global (total)', value: `${data.tasaConcepcionTotal}%`, color: 'text-emerald-600' },
                                 ].map((item, i) => (
-                                    <div key={i} className="flex justify-between items-center text-sm p-3 bg-zinc-50 rounded-xl">
-                                        <span className="text-zinc-500 text-xs font-medium">{item.label}</span>
-                                        <span className={cn('font-black text-sm', item.color)}>{item.value}</span>
+                                    <div key={i} className="flex justify-between items-center text-sm p-2.5 sm:p-3 bg-zinc-50 rounded-xl">
+                                        <span className="text-zinc-500 text-[11px] sm:text-xs font-medium">{item.label}</span>
+                                        <span className={cn('font-black text-xs sm:text-sm', item.color)}>{item.value}</span>
                                     </div>
                                 ))}
                             </CardContent>
@@ -801,7 +802,7 @@ export function DashboardSection() {
                 {/* ══════════ TAB SALUD & INVENTARIO ══════════ */}
                 <TabsContent value="salud" className="space-y-6">
                     {/* Solo los KPIs que NO están en la fila superior */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <KPICard
                             title="Mortalidad del Mes"
                             value={data.mortalidadMes}
@@ -819,17 +820,18 @@ export function DashboardSection() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         {/* Top enfermedades */}
                         <Card className="border-none shadow-sm">
                             <CardHeader className="bg-zinc-50/50 border-b border-zinc-100">
-                                <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
+                                <CardTitle className="text-xs sm:text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
                                     <FlaskConical className="w-4 h-4 text-rose-500" />
-                                    Diagnósticos más frecuentes del mes
+                                    <span className="hidden sm:inline">Diagnósticos más frecuentes del mes</span>
+                                    <span className="sm:hidden">Top diagnósticos</span>
                                 </CardTitle>
-                                <CardDescription>Top enfermedades / tipos de tratamiento</CardDescription>
+                                <CardDescription className="text-xs sm:text-sm">Top enfermedades / tipos de tratamiento</CardDescription>
                             </CardHeader>
-                            <CardContent className="p-6">
+                            <CardContent className="p-3 sm:p-6">
                                 {(d._enfermedadesChart || []).length === 0 ? (
                                     <div className="text-center py-10 text-zinc-400">
                                         <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -874,14 +876,15 @@ export function DashboardSection() {
                         {/* Tratamientos semanales */}
                         <Card className="border-none shadow-sm">
                             <CardHeader className="bg-zinc-50/50 border-b border-zinc-100">
-                                <CardTitle className="text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
+                                <CardTitle className="text-xs sm:text-sm font-black uppercase text-zinc-600 flex items-center gap-2">
                                     <Activity className="w-4 h-4 text-rose-500" />
-                                    Tratamientos — Últimos 7 días
+                                    <span className="hidden sm:inline">Tratamientos — Últimos 7 días</span>
+                                    <span className="sm:hidden">Tratamientos 7 días</span>
                                 </CardTitle>
-                                <CardDescription>Número de tratamientos registrados por día</CardDescription>
+                                <CardDescription className="text-xs sm:text-sm">Tratamientos registrados por día</CardDescription>
                             </CardHeader>
-                            <CardContent className="p-6">
-                                <div className="h-[250px]">
+                            <CardContent className="p-3 sm:p-6">
+                                <div className="h-[200px] sm:h-[250px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={data.healthEvents}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />

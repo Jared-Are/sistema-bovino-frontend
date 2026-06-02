@@ -260,17 +260,17 @@ export default function NuevaProduccionPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 p-8">
+        <div className="min-h-screen bg-zinc-50 p-4 sm:p-8">
             <Link href="/produccion">
-                <Button variant="ghost" size="sm" className="mb-6">
+                <Button variant="ghost" size="sm" className="mb-4 sm:mb-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Volver
                 </Button>
             </Link>
 
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
-                    <CardTitle className="text-2xl">Registrar Producción</CardTitle>
-                    <CardDescription>Campos con * son obligatorios</CardDescription>
+                    <CardTitle className="text-xl sm:text-2xl">Registrar Producción</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Campos con * son obligatorios</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -461,13 +461,13 @@ export default function NuevaProduccionPage() {
                             </div>
                         )}
 
-                        <div className="flex gap-3 pt-4">
-                            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
                                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                                 {loading ? "Registrando..." : "Registrar"}
                             </Button>
-                            <Link href="/produccion">
-                                <Button type="button" variant="outline">Cancelar</Button>
+                            <Link href="/produccion" className="w-full sm:w-auto">
+                                <Button type="button" variant="outline" className="w-full">Cancelar</Button>
                             </Link>
                         </div>
                     </form>

@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🐂 Sistema Bovino - Frontend
 
-## Getting Started
+¡Bienvenido al frontend de **Sistema Bovino**! Una plataforma moderna y altamente interactiva desarrollada con las últimas tecnologías web para la gestión eficiente y control completo de hatos ganaderos, control de salud, producción de leche y carne, y reproducción.
 
-First, run the development server:
+Este módulo de cliente está diseñado para ofrecer una experiencia fluida, responsiva en datos visuales para propietarios, veterinarios y operarios.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🚀 Tecnologías Principales
+
+*   **Framework:** [Next.js 15+](https://nextjs.org/) con App Router (React 19)
+*   **Lenguaje:** [TypeScript](https://www.typescriptlang.org/) para robustez y tipado estático
+*   **Estilos:** [Tailwind CSS](https://tailwindcss.com/)
+*   **Componentes UI:** [Shadcn UI](https://ui.shadcn.com/) (Radix Primitives, Tailwind CSS)
+*   **Iconografía:** [Lucide React](https://lucide.dev/)
+*   **Validaciones:** [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/)
+*   **Gráficos:** [Recharts](https://recharts.org/) para visualización interactiva de KPIs
+
+---
+
+## ✨ Características Clave
+
+1.  **Dashboard Interactivo Multidimensional**:
+    *   **Tab de Producción:** Monitoreo y métricas de litros de leche y peso de carne.
+    *   **Tab de Reproducción:** Gráficos tipo dona con histórico de montas por estado (Confirmada, En Evaluación, Aborto, etc.) y filtros de tiempo (Total vs. Este Mes).
+    *   **Tab de Salud e Inventario:** Visualización rápida de tratamientos activos y conteo del hato.
+2.  **Gestión de Hatos (Animales)**:
+    *   Filtros inteligentes por estado productivo, lote y sexo.
+    *   Registro y edición rápida de vacas, toros y terneros.
+3.  **Seguridad y Autenticación**:
+    *   Login robusto basado en token JWT y roles (`propietario`, `veterinario`, `operario`).
+    *   Restricción de vistas y enlaces en el menú lateral (Sidebar) adaptables al rol.
+    *   Modal obligatorio de cambio de contraseña en el primer inicio de sesión.
+4.  **Panel de Administración de Usuarios**:
+    *   Creación de operadores y veterinarios.
+    *   Generación automática de contraseñas temporales.
+    *   **Confirmación Robusta:** Modal de credenciales interactivo con opción de copiado rápido al portapapeles y alertas inteligentes si falla el envío de correo.
+
+---
+
+## 📂 Estructura de Directorios
+
+```text
+sistema-bovino-frontend/
+├── app/                  # Enrutamiento App Router de Next.js
+│   ├── animales/         # Módulo de gestión ganadera
+│   ├── dashboard/        # Dashboard principal de métricas y gráficos
+│   ├── usuarios/         # Gestión de personal (Propietario)
+│   │   └── nuevo/        # Formulario de registro de nuevos operarios/veterinarios
+│   ├── layout.tsx        # Layout root y configuraciones globales
+│   ├── client-layout.tsx # Manejo de estados del layout (SidebarProvider)
+│   └── page.tsx          # Página raíz (Formularios de Login y Registro de Finca)
+├── components/           # Componentes compartidos y modulares
+│   ├── ui/               # Componentes atómicos base de Shadcn UI (button, dialog, etc.)
+│   ├── sidebar.tsx       # Menú lateral dinámico y responsivo
+│   ├── login-form.tsx    # Manejo de login y persistencia de sesión
+│   └── dashboard-section.tsx # Lógica de gráficos y tabs del panel principal
+├── hooks/                # Custom React Hooks compartidos
+├── lib/                  # Utilidades y configuración de clientes
+└── public/               # Recursos estáticos (Logos, iconos, imágenes)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Configuración del Entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crea un archivo `.env.local` en la raíz del proyecto para definir la URL base de tu backend:
 
-## Learn More
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Instalación y Desarrollo
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Sigue estos sencillos pasos para levantar el entorno de desarrollo local:
 
-## Deploy on Vercel
+1.  **Clonar el repositorio** e ingresar al directorio:
+    ```bash
+    cd sistema-bovino-frontend
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2.  **Instalar dependencias**:
+    ```bash
+    npm install
+    # o
+    pnpm install
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3.  **Iniciar servidor de desarrollo**:
+    ```bash
+    npm run dev
+    ```
+
+4.  **Acceder a la aplicación**:
+    Abre [http://localhost:3000](http://localhost:3000) en tu navegador preferido.
+
+---
+
+## 📦 Construcción y Producción
+
+Para compilar el proyecto y prepararlo para producción:
+
+```bash
+# Compilar el frontend
+npm run build
+
+# Iniciar la build compilada localmente
+npm run start
+``` 

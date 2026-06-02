@@ -255,10 +255,10 @@ export default function EditarProduccionPage() {
 
             <Card className="w-full sm:max-w-3xl sm:mx-auto">
                 <CardHeader>
-                    <CardTitle className="text-2xl">
+                    <CardTitle className="text-xl sm:text-2xl">
                         Editar Registro de {tipo === 'leche' ? 'Leche' : 'Carne'}
                     </CardTitle>
-                    <CardDescription>Modifica los datos del registro #{id}</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">Modifica los datos del registro #{id}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
