@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Stethoscope, Syringe, Activity, Baby } from "lucide-react";
+import { formatFechaLocal, parseLocalDate } from "@/lib/utils";
 
 interface ReproduccionCardsProps {
   registros: any[];
@@ -25,9 +26,11 @@ export function ReproduccionCards({
   };
 
   // 👇 Magia: Calcular 283 días automáticamente
+  // 👇 Magia: Calcular 283 días automáticamente sin desfases de zona horaria
   const calcularFechaParto = (fechaMonta: string) => {
     if (!fechaMonta) return "Sin fecha";
-    const fecha = new Date(fechaMonta);
+    const fecha = parseLocalDate(fechaMonta);
+    if (!fecha) return "Sin fecha";
     fecha.setDate(fecha.getDate() + 283); // Sumar 283 días de gestación bovina
     return fecha.toLocaleDateString("es-ES", { day: '2-digit', month: 'short', year: 'numeric' });
   };
@@ -71,7 +74,7 @@ export function ReproduccionCards({
                     </div>
                     <div className="flex items-center text-sm text-zinc-600">
                       <Calendar className="w-4 h-4 mr-2 text-zinc-400" />
-                      Monta: {reg.fecha ? new Date(reg.fecha).toLocaleDateString() : 'Sin fecha'}
+                      Monta: {formatFechaLocal(reg.fecha)}
                     </div>
                     <div className="flex items-center text-sm text-zinc-600">
                       {reg.tipoMonta === "Monta Natural" ? <Stethoscope className="w-4 h-4 mr-2 text-zinc-400" /> : <Syringe className="w-4 h-4 mr-2 text-zinc-400" />}

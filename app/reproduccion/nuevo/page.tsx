@@ -32,8 +32,9 @@ import {
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { getLocalDateString } from "@/lib/utils";
 
-const hoyStr = new Date().toISOString().split("T")[0];
+const hoyStr = getLocalDateString();
 
 const baseReproduccionSchema = z.object({
   animalId: z.string().min(1, "Selecciona la vaca o novilla."),
@@ -85,7 +86,7 @@ export default function NuevoRegistroReproduccionPage() {
     tipoServicio: "Monta Natural" as
       | "Monta Natural"
       | "Inseminación Artificial",
-    fechaServicio: new Date().toISOString().split("T")[0],
+    fechaServicio: getLocalDateString(),
     toroId: "sin-toro",
     codigo_pajilla: "",
   });
@@ -361,7 +362,7 @@ useEffect(() => {
                   <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                   <Input
                     type="date"
-                    max={new Date().toISOString().split("T")[0]}
+                    max={getLocalDateString()}
                     className={`pl-8 ${fieldErrors.fechaServicio ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={formData.fechaServicio}
                     onChange={(e) => {

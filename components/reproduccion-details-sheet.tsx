@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import type { RegistroReproduccion } from "@/lib/types/reproduccion";
 import Modal from "./ui/modal";
+import { formatFechaLocal } from "@/lib/utils";
 
 interface ReproduccionDetailsSheetProps {
   registro: RegistroReproduccion | null;
@@ -32,7 +33,7 @@ export function ReproduccionDetailsSheet({
 
   const formatFecha = (fecha?: string) => {
     if (!fecha) return "No registrada";
-    return new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+    return formatFechaLocal(fecha, { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
   const getEstadoBadgeColor = (estado: string) => {
