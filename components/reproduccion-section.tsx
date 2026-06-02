@@ -52,9 +52,6 @@ export function ReproduccionSection() {
       const data: ReproduccionBackend[] =
         await reproduccionApi.getMontas(token);
 
-      // 👇 AGREGA ESTAS DOS LÍNEAS CHISMOSAS 👇
-      console.log("🕵️‍♂️ DATOS DEL BACKEND:", data);
-      console.log("🔍 FILTROS ACTUALES:", filters);
 
       const datosMapeados = data.map(mapBackendToFrontend);
       setRegistros(datosMapeados);
