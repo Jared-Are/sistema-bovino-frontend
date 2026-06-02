@@ -358,6 +358,8 @@ export default function NuevaProduccionPage() {
                                         <Droplets className="absolute left-2 top-2.5 h-4 w-4 text-blue-400" />
                                         <Input
                                             type="number" step="0.1" min="0.1" max="60" className="pl-8"
+                                            inputMode="decimal"
+                                            pattern="[0-9.]*"
                                             placeholder="Ej: 12.5"
                                             required
                                             value={formData.cantidad}
@@ -431,6 +433,8 @@ export default function NuevaProduccionPage() {
                                             step="0.1"
                                             min="10"
                                             className="pl-8"
+                                            inputMode="decimal"
+                                            pattern="[0-9.]*"
                                             placeholder="Ej: 250"
                                             required
                                             value={formData.peso_canal}

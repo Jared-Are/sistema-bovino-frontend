@@ -17,6 +17,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
     <main
       className={cn(
         "flex-1 transition-all duration-300 ease-in-out w-full",
+        "pt-14 md:pt-0",
         "md:ml-16",
         isExpanded && "md:ml-64"
       )}

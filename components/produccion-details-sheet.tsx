@@ -14,7 +14,8 @@ import {
   Trash2,
   Pencil,
   Scale,
-  Hash
+  Hash,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import type { RegistroProduccion } from '@/lib/types/produccion';
@@ -105,6 +106,14 @@ export function ProduccionDetailsSheet({
                   disabled={deleting}
                 >
                   <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <X className="w-4 h-4" />
                 </Button>
               </div>
             </div>
