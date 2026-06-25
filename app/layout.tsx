@@ -16,24 +16,10 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Gestión Bovina - Dashboard',
+  title: 'Gestión Bovina - Sistema de gestión ganadera',
   description: 'Sistema de gestión ganadera para administrar tu rebaño',
-  generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
+    icon: '/favicon.ico', 
     apple: '/apple-icon.png',
   },
 }
