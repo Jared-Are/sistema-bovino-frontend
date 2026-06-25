@@ -112,13 +112,7 @@ export default function NuevoAnimalPage() {
         pesoNacimiento: "",
         pesoActual: ""
     });
-
-    useEffect(() => {
-        if (formData.pesoNacimiento && !formData.pesoActual) {
-            setFormData(prev => ({ ...prev, pesoActual: prev.pesoNacimiento }));
-        }
-    }, [formData.pesoNacimiento]);
-
+    
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
