@@ -151,14 +151,19 @@ export default function PantallaPartosPage() {
         }
     };
 
-    if (dataLoading) return <div className="flex justify-center items-center min-h-screen"><Loader2 className="animate-spin h-10 w-10 text-emerald-600" /></div>;
+if (dataLoading) return <div className="flex justify-center items-center min-h-screen"><Loader2 className="animate-spin h-10 w-10 text-emerald-600" /></div>;
 
     return (
-        <div className="min-h-screen bg-zinc-50 p-8">
-            <Link href="/reproduccion"><Button variant="ghost" className="mb-6"><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button></Link>
+        <div className="min-h-screen bg-zinc-50 p-4 lg:p-8">
+            <Link href="/reproduccion">
+                <Button variant="ghost" className="mb-6"><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
+            </Link>
 
-            <div className="grid lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-4">
+            {/* 👇 CAMBIO CLAVE: Usamos flex-col para móviles y grid para escritorio */}
+            <div className="flex flex-col lg:grid lg:grid-cols-3 gap-8">
+                
+                {/* COLUMNA IZQUIERDA: LISTA DE VACAS (En móvil va abajo: order-2) */}
+                <div className="order-2 lg:order-1 lg:col-span-2 space-y-4">
                     <h2 className="text-xl font-bold text-zinc-800 flex items-center gap-2">
                         <Baby className="text-emerald-600 h-6 w-6" /> Vacas Gestantes
                     </h2>
@@ -171,11 +176,14 @@ export default function PantallaPartosPage() {
                                 <Card 
                                     key={diag.id} 
                                     className={`cursor-pointer border-l-4 transition-all ${selectedDiag?.id === diag.id ? 'border-l-emerald-500 shadow-md bg-emerald-50/30' : 'border-l-zinc-300 hover:border-l-emerald-400'}`}
-                                    onClick={() => setSelectedDiag(diag)}
+                                    onClick={() => {
+                                        setSelectedDiag(diag);
+                                        // 👇 SCROLL AUTOMÁTICO PARA MÓVILES
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
                                 >
                                     <CardContent className="p-4 flex items-center justify-between">
                                         <div>
-                                            {/* 👇 BLINDAJE VISUAL: Usamos el operador '?' para que si algo viene nulo, React no explote */}
                                             <p className="font-bold text-zinc-900">
                                                 {diag.monta?.hembra?.arete || 'Sin arete'} - {diag.monta?.hembra?.nombre || 'Vaca Eliminada'}
                                             </p>
@@ -189,7 +197,8 @@ export default function PantallaPartosPage() {
                     </div>
                 </div>
 
-                <div className="lg:col-span-1">
+                {/* COLUMNA DERECHA: FORMULARIO (En móvil va arriba: order-1) */}
+                <div className="order-1 lg:order-2 lg:col-span-1">
                     <Card className="border-zinc-200 shadow-sm sticky top-6">
                         <CardHeader className="bg-zinc-50 border-b">
                             <CardTitle className="text-md flex items-center gap-2">
@@ -198,7 +207,9 @@ export default function PantallaPartosPage() {
                         </CardHeader>
                         <CardContent className="pt-6 space-y-4">
                             {!selectedDiag ? (
-                                <div className="text-center py-6 text-zinc-400 text-sm italic">Selecciona una vaca gestante a la izquierda para comenzar.</div>
+                                <div className="text-center py-6 text-zinc-400 text-sm italic">
+                                    Selecciona una vaca gestante {typeof window !== 'undefined' && window.innerWidth < 1024 ? 'abajo' : 'a la izquierda'} para comenzar.
+                                </div>
                             ) : (
                                 <>
                                     <div className="space-y-2">
